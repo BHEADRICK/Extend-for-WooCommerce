@@ -1,0 +1,20 @@
+{
+  "generator-plugin-wp": {
+    "name": "Extend for WooCommerce",
+    "homepage": "https://catmanstudios.com",
+    "description": "A radical new plugin for WordPress!",
+    "version": "0.0.0",
+    "author": "Bryan Headrick",
+    "authoremail": "info@catmanstudios.com",
+    "authorurl": "https://catmanstudios.com",
+    "license": "GPLv2",
+    "slug": "extend-for-woocommerce",
+    "classname": "Extend_For_WooCommerce",
+    "mainclassname": "Extend_For_WooCommerce",
+    "classprefix": "EFWC_",
+    "prefix": "extend_for_woocommerce",
+    "year": 2021,
+    "currentVersionWP": "4.8.1",
+    "plugingenversion": "0.20.2"
+  }
+}
