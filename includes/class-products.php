@@ -20,6 +20,10 @@ class EFWC_Products {
 	 * @var   Extend_For_WooCommerce
 	 */
 	protected $plugin = null;
+	protected $settings_tab_id = 'warranties';
+	protected $service_url = '';
+	protected $mode = '';
+	protected $api_key ='';
 
 	/**
 	 * Constructor.
@@ -31,6 +35,19 @@ class EFWC_Products {
 	public function __construct( $plugin ) {
 		$this->plugin = $plugin;
 		$this->hooks();
+		$mode = get_option('wc_extend_sandbox');
+		if($mode==='yes'){
+			$this->mode = 'sandbox';
+			$this->service_url = 'https://api-demo.helloextend.com';
+		}else{
+			$this->mode = 'live';
+			$this->service_url = 'https://api.helloextend.com';
+		}
+		$store_id = get_option('wc_extend_store_id');
+		if($store_id){
+			$this->service_url .= '/stores/' . $store_id . '/products';
+		}
+		$this->api_key = get_option('wc_extend_api_key');
 	}
 
 	/**
@@ -47,15 +64,77 @@ class EFWC_Products {
 		add_action( 'woocommerce_get_settings_products', array( $this, 'get_settings' ), 50, 2 );
 	}
 
-	public function add_woocommerce_settings_tab(){
+	public function add_woocommerce_settings_tab($settings_tabs){
 
+		$settings_tabs[ $this->settings_tab_id ] = __( 'Extended Warranties', 'extend-for-woocommerce' );
+		return $settings_tabs;
 	}
 
 	public function get_settings( $settings, $current_section ){
 
-		if($current_section !== 'warranties'){
+		if($current_section !== $this->settings_tab_id){
 			return $settings;
 		}
+
+		$cat_terms = get_terms([
+			'parent'=>0,
+			'taxonomy'=>'product_cat'
+		]);
+
+
+
+		$top_level_cats = [];
+
+		foreach($cat_terms as $term){
+			$top_level_cats[$term->term_id] = $term->name;
+		}
+		
+		return array(
+			array(
+				'name' => __( 'Storewide Warranty Configuration', 'extend-for-woocommerce' ),
+				'type' => 'title',
+				'desc' => __( 'These settings affect all products storewide. You can override these settings on a per product basis to make exceptions.', 'extend-for-woocommerce' ),
+				'id'   => 'wc_extend_title',
+			),
+			array(
+				'title'   => __( 'Sandbox Mode', 'wcpf' ),
+				'type'    => 'checkbox',
+				'id'      => 'wc_extend_sandbox',
+				'default' => 'no',
+			),
+
+			array(
+				'name' => __( 'Extend Store Id', 'extend-for-woocommerce' ),
+				'type'        => 'text',
+				'desc'        => __( '', 'extend-for-woocommerce' ),
+				'default'     => '',
+				'placeholder' => __( '', 'extend-for-woocommerce' ),
+				'id'          => 'wc_extend_store_id',
+				'desc_tip'    => true,
+			),
+			array(
+				'name' => __( 'Extend API Key', 'extend-for-woocommerce' ),
+				'type'        => 'text',
+				'desc'        => __( '', 'extend-for-woocommerce' ),
+				'default'     => '',
+				'placeholder' => __( '', 'extend-for-woocommerce' ),
+				'id'          => 'wc_extend_api_key',
+				'desc_tip'    => true,
+			),
+
+			array(
+				'name'     => __( 'Exclude Categories for Extended Warranty offers', 'extend-for-woocommerce' ),
+				'type'     => 'multiselect',
+				'class'    => 'wc-enhanced-select',
+				'css'      => 'width: 450px;',
+				'desc'     => __( 'Select categories that should not have warranties.', 'extend-for-woocommerce' ),
+				'default'  => '',
+				'id'       => 'wc_extend_disabled_categories',
+				'desc_tip' => true,
+				'options'  => $top_level_cats,
+			),
+			array( 'type' => 'sectionend', 'id' => 'deposits_defaults' ),
+		);
 
 	}
 
@@ -75,17 +154,21 @@ class EFWC_Products {
 	public function addProduct($id){
 
 		$data = $this->getProductData($id);
-		if(!$data){
-			return;
-		}
-		$data['referenceId']=$id;
+
 	}
 
 	public function updateProduct($id){
+		error_log('getting data');
 		$data = $this->getProductData($id);
-		if(!$data){
-			return;
-		}
+
+		error_log('posting to ' . $this->service_url);
+
+
+		$res = $this->remote_request($this->service_url, 'POST', ['upsert'=>true], $data);
+
+		error_log(print_r($res, true));
+
+
 
 
 	}
@@ -96,17 +179,12 @@ class EFWC_Products {
 
 		$product = wc_get_product($id);
 
-		$excluded = $this->isExcluded($product);
-
-		if($excluded){
-			return false;
-		}
 
 		$brand = $product->get_attribute('pa_product-brand');
 		$image = get_the_post_thumbnail_url($id);
 
 		$data = [
-
+		'referenceId'=>$id,
 		'brand'=>$brand,
 		'category'=>$this->getCategory($id),
 		'description'=>substr($this->getPlain($product->get_short_description()), 0, 2000),
@@ -176,7 +254,10 @@ class EFWC_Products {
 	 */
 	private function isExcluded($product){
 		$cats = $product->get_category_ids();
-		$excluded_cat_ids = [];
+		$excluded_cat_ids = get_option('wc_extend_disabled_categories');
+		if(!$excluded_cat_ids){
+			return false;
+		}
 		foreach($cats as $cat){
 			$terms =[$cat];
 			$this->getParents($cat, $terms);
@@ -212,6 +293,10 @@ class EFWC_Products {
 			return false;
 		}
 
+		if($this->isExcluded($product)){
+			return false;
+		}
+
 		$catonly = get_post_meta($product->get_id(), '_catalog_only', true);
 		if($catonly && $catonly!== null){
 			$enabled = false;
@@ -244,8 +329,18 @@ class EFWC_Products {
 	 *
 	 * @return array
 	 */
-	private function remote_request( $url, $method = 'GET', $url_args = array(), $body_fields = array(), $headers = array() ) {
+	private function remote_request( $url, $method = 'GET', $url_args = array(), $body_fields = array() ) {
 
+		$headers = array(
+			'Accept', 'application/json; version=2021-04-01',
+			'Content-Type' => 'application/json; charset=utf-8',
+
+		);
+		if($this->mode === 'sandbox' || $this->api_key){
+			$headers['X-Extend-Access-Token (sandbox)']=$this->api_key;
+		}else{
+			$headers['X-Extend-Access-Token']=$this->api_key;
+		}
 		// Add url args (get parameters) to the main url
 		if ( $url_args ) $url = add_query_arg( $url_args, $url );
 
