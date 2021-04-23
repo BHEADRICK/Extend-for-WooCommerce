@@ -173,6 +173,12 @@ class EFWC_Products {
 
 	}
 
+	/**
+	 * @param $id
+	 *
+	 * @return array
+	 */
+
 	private function getProductData($id){
 
 
@@ -215,6 +221,8 @@ class EFWC_Products {
 		}
 
 
+
+		return $data;
 		
 	}
 
@@ -332,15 +340,13 @@ class EFWC_Products {
 	private function remote_request( $url, $method = 'GET', $url_args = array(), $body_fields = array() ) {
 
 		$headers = array(
-			'Accept', 'application/json; version=2021-04-01',
+			'Accept'=> 'application/json; version=2021-04-01',
 			'Content-Type' => 'application/json; charset=utf-8',
 
 		);
-		if($this->mode === 'sandbox' || $this->api_key){
-			$headers['X-Extend-Access-Token (sandbox)']=$this->api_key;
-		}else{
+
 			$headers['X-Extend-Access-Token']=$this->api_key;
-		}
+
 		// Add url args (get parameters) to the main url
 		if ( $url_args ) $url = add_query_arg( $url_args, $url );
 
@@ -350,6 +356,8 @@ class EFWC_Products {
 		if ( $method ) $args['method'] = $method;
 		if ( $headers ) $args['headers'] = $headers;
 		if ( $body_fields ) $args['body'] = json_encode( $body_fields );
+
+		error_log(print_r(compact('url', 'args'), true));
 
 		// Make the request
 		$response = wp_remote_request($url, $args);
