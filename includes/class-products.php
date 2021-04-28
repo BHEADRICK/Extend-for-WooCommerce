@@ -24,6 +24,7 @@ class EFWC_Products {
 	protected $service_url = '';
 	protected $mode = '';
 	protected $api_key ='';
+	protected $csv_fields = null;
 
 	/**
 	 * Constructor.
@@ -48,6 +49,8 @@ class EFWC_Products {
 			$this->service_url .= '/stores/' . $store_id . '/products';
 		}
 		$this->api_key = get_option('wc_extend_api_key');
+		$this->csv_fields = ['brand','price','title','referenceId', 'parentReferenceId','imageUrl','category','description','mfrWarrantyParts','mfrWarrantyLabor','mfrWarrantyUrl','sku','gtin','upc'];
+
 	}
 
 	/**
@@ -62,7 +65,41 @@ class EFWC_Products {
 		add_action(get_class($this->plugin). '_update_product', [$this, 'updateProduct']);
 		add_action( 'woocommerce_get_sections_products', array( $this, 'add_woocommerce_settings_tab' ), 50 );
 		add_action( 'woocommerce_get_settings_products', array( $this, 'get_settings' ), 50, 2 );
+		add_action('wp_extend_export_product', [$this, 'exportProduct'], 10, 2);
+		add_action('wp_enqueue_scripts', [$this, 'scripts']);
+		add_action('woocommerce_before_add_to_cart_form', [$this, 'product_offer']);
+
+//		add_filter('woocommerce_add_cart_item', [$this, 'add_cart_item']);
+
 	}
+
+
+
+
+	public function scripts(){
+		wp_register_script('extend_script', 'https://sdk.helloextend.com/extend-sdk-client/v1/extend-sdk-client.min.js');
+		wp_register_script('extend_warranty_script', $this->plugin->url . 'assets/addWarranty.js', ['jquery', 'extend_script'], filemtime($this->plugin->path .'assets/addWarranty.js' ));
+	}
+
+	public function product_offer(){
+		global $product;
+
+		$id = $product->get_id();
+
+		$store_id = get_option('wc_extend_store_id');
+		if($store_id){
+			wp_enqueue_script('extend_script');
+			wp_enqueue_script('extend_warranty_script');
+			wp_localize_script('extend_warranty_script', 'WCExtend', compact('store_id', 'id'));
+			echo "<div id=\"extend-offer\"></div>";
+
+
+		}
+
+
+	}
+	
+
 
 	public function add_woocommerce_settings_tab($settings_tabs){
 
@@ -133,7 +170,7 @@ class EFWC_Products {
 				'desc_tip' => true,
 				'options'  => $top_level_cats,
 			),
-			array( 'type' => 'sectionend', 'id' => 'deposits_defaults' ),
+			array( 'type' => 'sectionend', 'id' => 'wc_extend_defaults' ),
 		);
 
 	}
@@ -150,6 +187,38 @@ class EFWC_Products {
 	}
 
 
+	public function exportProduct($post_id, $file_path){
+
+		$product = wc_get_product($post_id);
+
+		if(!$this->isEnabled($product)){
+			return;
+		}
+
+		if($this->isExcluded($product)){
+			return;
+		}
+
+		if($product->get_type()==='variable'){
+
+			foreach($product->get_available_variations() as $variation){
+				wp_schedule_single_event(time(), 'wp_extend_export_product', [$variation['variation_id'] , $file_path]);
+			}
+		}
+
+		$data = $this->getProductData($product);
+
+		if(!empty($data)){
+			$this->saveProductCsv($data, $file_path);
+		}else{
+			error_log('data empty for ' . $post_id);
+		}
+
+
+
+
+
+	}
 
 	public function addProduct($id){
 
@@ -158,42 +227,74 @@ class EFWC_Products {
 	}
 
 	public function updateProduct($id){
-		error_log('getting data');
+
 		$data = $this->getProductData($id);
 
-		error_log('posting to ' . $this->service_url);
+
+//		error_log(print_r($data, true));
 
 
 		$res = $this->remote_request($this->service_url, 'POST', ['upsert'=>true], $data);
-
-		error_log(print_r($res, true));
-
 
 
 
 	}
 
 	/**
-	 * @param $id
+	 * @param $product mixed
 	 *
 	 * @return array
 	 */
 
-	private function getProductData($id){
+	private function getProductData($product = null){
+
+
+		if(is_numeric($product)){
+			$id = $product;
+			$product = wc_get_product($id);
+		}else{
+			$id = $product->get_id();
+		}
 
 
 
-		$product = wc_get_product($id);
 
 
-		$brand = $product->get_attribute('pa_product-brand');
 		$image = get_the_post_thumbnail_url($id);
+
+		if($product->get_parent_id()>0){
+			$parent = wc_get_product($product->get_parent_id());
+			$brand = $parent->get_attribute('pa_product-brand');
+			$description = $parent->get_short_description();
+			$description = $this->getPlain($description);
+			if(empty($description)){
+				$description = $parent->get_description();
+			}
+			if(empty($image)){
+				$image = get_the_post_thumbnail_url($product->get_parent_id());
+			}
+			$category = $this->getCategory($product->get_parent_id());
+		}else{
+			$brand = $product->get_attribute('pa_product-brand');
+			$description = $product->get_short_description();
+			$description = $this->getPlain($description);
+			if(empty($description)){
+				$description = $product->get_description();
+				$description = $this->getPlain($description);
+			}
+			$category = $this->getCategory($id);
+		}
+
+
+
+
+
 
 		$data = [
 		'referenceId'=>$id,
 		'brand'=>$brand,
-		'category'=>$this->getCategory($id),
-		'description'=>substr($this->getPlain($product->get_short_description()), 0, 2000),
+		'category'=>$category,
+		'description'=>substr($description, 0, 2000),
 		'enabled'=>$this->isEnabled($product),
 			'price'=>['currencyCode'=>'USD', 'amount'=> $product->get_price()],
 		'title'=>$product->get_title(),
@@ -216,9 +317,9 @@ class EFWC_Products {
 			$data['identifiers']['upc'] = $upc;
 		}
 
-		if($product->get_parent_id()){
+
 			$data['parentReferenceId'] = $product->get_parent_id();
-		}
+
 
 
 
@@ -226,8 +327,113 @@ class EFWC_Products {
 		
 	}
 
+	private function flattenData($data){
+		$data['mfrWarrantyParts'] = '';
+		$data['mfrWarrantyLabor'] = '';
+		$data['mfrWarrantyUrl'] = '';
+
+		if(isset($data['price'])){
+
+
+			$data['price'] = $data['price']['amount'];
+		}
+
+		foreach($data['identifiers'] as $key=>$val){
+			$data[$key] = $val;
+		}
+
+
+		if(isset($data['mfrWarranty'])){
+			if(empty($data['mfrWarranty'])){
+				unset($data['mfrWarranty']);
+
+			}else{
+				$data['mfrWarrantyParts'] = isset($data['mfrWarranty']['parts'])?$data['mfrWarranty']['parts']:'';
+				$data['mfrWarrantyLabor'] = isset($data['mfrWarranty']['labor'])?$data['mfrWarranty']['labor']:'';
+				$data['mfrWarrantyUrl'] = isset($data['mfrWarranty']['url'])?$data['mfrWarranty']['url']:'';
+				unset($data['mfrWarranty']);
+			}
+		}
+		$data['gtin'] = isset($data['upc'])? $data['upc']:'';
+
+		return $data;
+	}
+
+	/**
+	 * @param array $product_ids
+	 */
+	public function exportCsv($product_ids = []){
+
+
+
+		$uploads = wp_upload_dir();
+
+		$path = $uploads['path'];
+
+		$filename = $path . '/' . 'extend_export.csv';
+
+		$fp = fopen( $filename, 'w+' );
+		if($fp){
+			fputcsv($fp, $this->csv_fields);
+			fclose($fp);
+		}else{
+			error_log('unable to open  for writing: ' > $filename);
+		}
+		chmod($filename, 0755);
+
+
+
+		foreach($product_ids as $product_id){
+			wp_schedule_single_event(time(), 'wp_extend_export_product', [$product_id, $filename]);
+		}
+	}
+
+
+	private function saveProductCsv($data, $file_path){
+
+	$data = $this->flattenData($data);
+
+	$csv_data = [];
+	foreach($this->csv_fields as $field){
+
+		$csv_data[] = (isset($data[$field]) && !is_array($data[$field]))?$data[$field]:'';
+	}
+
+
+
+	$fp = fopen($file_path, 'a');
+
+	if($fp){
+		fputcsv($fp, $csv_data);
+		fclose($fp);
+	}else{
+		error_log('unable to open ' . $file_path);
+	}
+
+
+
+
+	//save flatteened data to csv file
+
+	}
+
 	private function getPlain($html){
-		return preg_replace( "/\n\s+/", "\n", rtrim(html_entity_decode(strip_tags($html))) );
+		$text = preg_replace( "/\n\s+/", "\n", rtrim(html_entity_decode(strip_tags($html))) );
+
+		$remove = [
+			'Call Now With Questions: 800-515-1747',
+			'Or Email: sales@poolwarehouse.com',
+			'Select A Liner Pattern To Begin!'
+		];
+
+		$text = preg_replace("/\[[A-Za-z _0-9=\"\']\]/", "", $text);
+
+		foreach($remove as $r){
+			$text = str_replace($r, '', $text);
+		}
+
+		return $text;
+
 	}
 
 	/**
@@ -240,10 +446,14 @@ class EFWC_Products {
 		
 		$primary_cat = get_post_meta($id, '_yoast_wpseo_primary_product_cat', true);
 		
-		if($primary_cat){
+		if($primary_cat && is_numeric($primary_cat)){
 			$term = get_term($primary_cat, 'product_cat');
-			return $term->name;
-		}else{
+			if(is_object($term)){
+				return $term->name;
+			}
+
+		}
+
 			$cats = wc_get_product_category_list($id);
 
 			$cats = explode(',', $cats);
@@ -252,7 +462,7 @@ class EFWC_Products {
 				return strip_tags($cat);
 			}, $cats);
 			return implode(',', $cats);
-		}
+
 
 		
 	}
@@ -304,6 +514,12 @@ class EFWC_Products {
 		if($this->isExcluded($product)){
 			return false;
 		}
+
+		$stock = $product->get_stock_status();
+		if($stock !== 'instock'){
+			return false;
+		}
+
 
 		$catonly = get_post_meta($product->get_id(), '_catalog_only', true);
 		if($catonly && $catonly!== null){
@@ -357,7 +573,7 @@ class EFWC_Products {
 		if ( $headers ) $args['headers'] = $headers;
 		if ( $body_fields ) $args['body'] = json_encode( $body_fields );
 
-		error_log(print_r(compact('url', 'args'), true));
+//		error_log(print_r(compact('url', 'args'), true));
 
 		// Make the request
 		$response = wp_remote_request($url, $args);

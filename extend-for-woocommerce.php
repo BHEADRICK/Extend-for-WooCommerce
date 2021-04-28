@@ -123,6 +123,22 @@ final class Extend_For_WooCommerce {
 	protected $products;
 
 	/**
+	 * Instance of EWC_Frontend
+	 *
+	 * @since0.0.0
+	 * @var EWC_Frontend
+	 */
+	protected $frontend;
+
+	/**
+	 * Instance of EFWC_Cart
+	 *
+	 * @since0.0.0
+	 * @var EFWC_Cart
+	 */
+	protected $cart;
+
+	/**
 	 * Creates or returns an instance of this class.
 	 *
 	 * @since   0.0.0
@@ -155,6 +171,8 @@ final class Extend_For_WooCommerce {
 	public function plugin_classes() {
 
 		$this->products = new EFWC_Products( $this );
+		$this->frontend = new EFWC_Frontend( $this );
+		$this->cart = new EFWC_Cart( $this );
 	} // END OF PLUGIN CLASSES FUNCTION
 
 	/**
@@ -168,6 +186,7 @@ final class Extend_For_WooCommerce {
 	 */
 	public function hooks() {
 		add_action( 'init', array( $this, 'init' ), 0 );
+
 	}
 
 	/**
@@ -181,6 +200,50 @@ final class Extend_For_WooCommerce {
 			return;
 		}
 
+		global $wpdb;
+		$exported = get_option('wc_extend_exported');
+		if(!$exported){
+
+		    $this->plugin_classes();
+
+		    $disabled_cats = get_option('wc_extend_disabled_categories');
+		    if(!$disabled_cats){
+		        $disabled_cats = [];
+            }
+            $args = [
+	            'posts_per_page'=>-1,
+	            'fields'=>'ids',
+	            'post_type'=>['product'],
+	            'tax_query'=>[
+		            'relation' => 'AND',
+		            [
+			            'taxonomy'=>'product_type',
+			            'field'=>'slug',
+			            'terms'=>['bundle'],
+			            'operator'=>'NOT IN'
+		            ],
+		            [
+			            'taxonomy'=>'product_cat',
+			            'field'=>'term_id',
+			            'terms'=>$disabled_cats,
+			            'operator'=>'NOT IN'
+		            ]
+	            ]
+            ];
+		    $posts = get_posts($args);
+
+		    error_log($wpdb->last_query);
+
+		    $this->products->exportCsv($posts);
+
+
+
+
+
+
+
+        }
+
 		// Make sure any rewrite functionality has been loaded.
 		flush_rewrite_rules();
 	}
@@ -192,6 +255,16 @@ final class Extend_For_WooCommerce {
 	 * @since  0.0.0
 	 */
 	public function _deactivate() {
+
+
+
+	    wp_clear_scheduled_hook('wp_extend_export_product');
+		$uploads = wp_upload_dir();
+
+		$path = $uploads['path'];
+
+		$filename = $path . '/' . 'extend_export.csv';
+		unlink($filename);
 		// Add deactivation cleanup functionality here.
 	}
 
@@ -311,6 +384,8 @@ final class Extend_For_WooCommerce {
 			case 'url':
 			case 'path':
 			case 'products':
+			case 'frontend':
+			case 'cart':
 				return $this->$field;
 			default:
 				throw new Exception( 'Invalid ' . __CLASS__ . ' property: ' . $field );
