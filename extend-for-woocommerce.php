@@ -176,7 +176,7 @@ final class Extend_For_WooCommerce {
 		}
 		$store_id = get_option('wc_extend_store_id');
 		if($store_id){
-			$this->service_url .= '/stores/' . $store_id . '/products';
+			$this->service_url .= '/stores/' . $store_id ;
 		}
 		$this->api_key = get_option('wc_extend_api_key');
 	}
@@ -215,8 +215,9 @@ final class Extend_For_WooCommerce {
 	 *
 	 * @return array
 	 */
-	public function remote_request( $url, $method = 'GET', $url_args = array(), $body_fields = array() ) {
+	public function remote_request($path, $method = 'GET', $url_args = array(), $body_fields = array() ) {
 
+	    $url = $this->service_url . $path;
 		$headers = array(
 			'Accept'=> 'application/json; version=2021-04-01',
 			'Content-Type' => 'application/json; charset=utf-8',

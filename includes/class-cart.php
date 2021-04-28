@@ -149,7 +149,7 @@ class EFWC_Cart {
 
 					error_log(print_r($contract_data, true));
 
-
+//				$this->plugin->remote_request($this-)
 
 				}
 
