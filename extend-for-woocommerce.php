@@ -141,6 +141,7 @@ final class Extend_For_WooCommerce {
 	protected $service_url = '';
 	protected $mode = '';
 	protected $api_key ='';
+	protected $store_id;
 
 	/**
 	 * Creates or returns an instance of this class.
@@ -179,6 +180,8 @@ final class Extend_For_WooCommerce {
 			$this->service_url .= '/stores/' . $store_id ;
 		}
 		$this->api_key = get_option('wc_extend_api_key');
+
+		$this->store_id = $store_id;
 	}
 
 	/**
@@ -235,6 +238,7 @@ final class Extend_For_WooCommerce {
 		if ( $method ) $args['method'] = $method;
 		if ( $headers ) $args['headers'] = $headers;
 		if ( $body_fields ) $args['body'] = json_encode( $body_fields );
+		$args['timeout'] = 45;
 
 //		error_log(print_r(compact('url', 'args'), true));
 
@@ -471,6 +475,7 @@ final class Extend_For_WooCommerce {
 			case 'products':
 			case 'frontend':
 			case 'cart':
+            case 'store_id':
 				return $this->$field;
 			default:
 				throw new Exception( 'Invalid ' . __CLASS__ . ' property: ' . $field );

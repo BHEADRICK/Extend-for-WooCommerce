@@ -54,6 +54,7 @@ class EFWC_Products {
 		add_action('wp_extend_export_product', [$this, 'exportProduct'], 10, 2);
 		add_action('wp_enqueue_scripts', [$this, 'scripts']);
 		add_action('woocommerce_before_add_to_cart_form', [$this, 'product_offer']);
+		
 
 //		add_filter('woocommerce_add_cart_item', [$this, 'add_cart_item']);
 
