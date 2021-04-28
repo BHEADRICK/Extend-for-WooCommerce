@@ -209,7 +209,7 @@ class EFWC_Products {
 	public function addProduct($id){
 
 		$data = $this->getProductData($id);
-		$res = $this->plugin->remote_request('/products', 'POST', ['upsert'=>false], $data);
+		$res = $this->plugin->remote_request('/products', 'POST', $data, ['upsert'=>false]);
 
 	}
 
@@ -217,7 +217,7 @@ class EFWC_Products {
 
 		$data = $this->getProductData($id);
 		
-		$res = $this->plugin->remote_request('/products', 'POST', ['upsert'=>true], $data);
+		$res = $this->plugin->remote_request('/products', 'POST',  $data, ['upsert'=>true]);
 
 
 

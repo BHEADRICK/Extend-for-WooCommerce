@@ -215,7 +215,7 @@ final class Extend_For_WooCommerce {
 	 *
 	 * @return array
 	 */
-	public function remote_request($path, $method = 'GET', $url_args = array(), $body_fields = array() ) {
+	public function remote_request($path, $method = 'GET', $body_fields = array(),  $url_args = array() ) {
 
 	    $url = $this->service_url . $path;
 		$headers = array(
