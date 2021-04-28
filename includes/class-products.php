@@ -21,9 +21,7 @@ class EFWC_Products {
 	 */
 	protected $plugin = null;
 	protected $settings_tab_id = 'warranties';
-	protected $service_url = '';
-	protected $mode = '';
-	protected $api_key ='';
+
 	protected $csv_fields = null;
 
 	/**
@@ -36,19 +34,7 @@ class EFWC_Products {
 	public function __construct( $plugin ) {
 		$this->plugin = $plugin;
 		$this->hooks();
-		$mode = get_option('wc_extend_sandbox');
-		if($mode==='yes'){
-			$this->mode = 'sandbox';
-			$this->service_url = 'https://api-demo.helloextend.com';
-		}else{
-			$this->mode = 'live';
-			$this->service_url = 'https://api.helloextend.com';
-		}
-		$store_id = get_option('wc_extend_store_id');
-		if($store_id){
-			$this->service_url .= '/stores/' . $store_id . '/products';
-		}
-		$this->api_key = get_option('wc_extend_api_key');
+
 		$this->csv_fields = ['brand','price','title','referenceId', 'parentReferenceId','imageUrl','category','description','mfrWarrantyParts','mfrWarrantyLabor','mfrWarrantyUrl','sku','gtin','upc'];
 
 	}
@@ -223,18 +209,15 @@ class EFWC_Products {
 	public function addProduct($id){
 
 		$data = $this->getProductData($id);
+		$res = $this->plugin->remote_request($this->plugin->service_url, 'POST', ['upsert'=>false], $data);
 
 	}
 
 	public function updateProduct($id){
 
 		$data = $this->getProductData($id);
-
-
-//		error_log(print_r($data, true));
-
-
-		$res = $this->remote_request($this->service_url, 'POST', ['upsert'=>true], $data);
+		
+		$res = $this->plugin->remote_request($this->plugin->service_url, 'POST', ['upsert'=>true], $data);
 
 
 
@@ -544,71 +527,5 @@ class EFWC_Products {
 		return [];
 	}
 
-	/**
-	 * @param $url
-	 * @param string $method
-	 * @param array $url_args
-	 * @param array $body_fields
-	 * @param array $headers
-	 *
-	 * @return array
-	 */
-	private function remote_request( $url, $method = 'GET', $url_args = array(), $body_fields = array() ) {
 
-		$headers = array(
-			'Accept'=> 'application/json; version=2021-04-01',
-			'Content-Type' => 'application/json; charset=utf-8',
-
-		);
-
-			$headers['X-Extend-Access-Token']=$this->api_key;
-
-		// Add url args (get parameters) to the main url
-		if ( $url_args ) $url = add_query_arg( $url_args, $url );
-
-		// Prepare arguments for wp_remote_request
-		$args = array();
-
-		if ( $method ) $args['method'] = $method;
-		if ( $headers ) $args['headers'] = $headers;
-		if ( $body_fields ) $args['body'] = json_encode( $body_fields );
-
-//		error_log(print_r(compact('url', 'args'), true));
-
-		// Make the request
-		$response = wp_remote_request($url, $args);
-
-		// Get the results
-		$response_code = wp_remote_retrieve_response_code( $response );
-		$response_message = wp_remote_retrieve_response_message( $response );
-		$response_body = wp_remote_retrieve_body( $response );
-
-		// Decode the JSON in the body, if it is json
-		if ( $response_body ) {
-			$j = json_decode( $response_body );
-
-			if ( $j ) $response_body = $j;
-		}
-
-		// Return this information in the same format for success or error. Includes debugging information.
-		return array(
-			'response_body' => $response_body,
-			'response_code' => $response_code,
-			'response_message' => $response_message,
-			'response' => $response,
-			'debug' => array(
-				'file' => __FILE__,
-				'line' => __LINE__,
-				'function' => __FUNCTION__,
-				'args' => array(
-					'url' => $url,
-					'method' => $method,
-					'url_args' => $url_args,
-					'body_fields' => $body_fields,
-					'headers' => $headers,
-				),
-			)
-		);
-
-	}
 }

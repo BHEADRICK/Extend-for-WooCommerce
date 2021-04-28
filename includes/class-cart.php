@@ -32,7 +32,7 @@ class EFWC_Cart {
 	public function __construct( $plugin ) {
 		$this->plugin = $plugin;
 		$this->hooks();
-		$this->warranty_product_id = 414513;
+		$this->warranty_product_id = 415768;
 	}
 
 	/**
@@ -79,20 +79,85 @@ class EFWC_Cart {
 
 		$items = $order->get_items();
 		$contracts = [];
+		$prices = [];
 		foreach($items as $item){
 			if($item->get_product_id() === $this->warranty_product_id){
 				$contracts[] = $item;
+			}else{
+				$prices[$item->get_product_id()] = $item->get_subtotal()/$item->get_quantity();
 			}
 		}
 		if(!empty($contracts)){
 			foreach($contracts as $item){
-				$data = $item->get_meta_data();
+				$data = $item->get_meta('_extend_data');
+				if($data){
+
+					$covered_id = $data['covered_product_id'];
+
+					$contract_data = [
+						'transactionId'=>$order_id,
+						'poNumber'=>$order->get_order_number(),
+						'transactionTotal'=>[
+							'currencyCode'=>'USD',
+							'amount'=>$order->get_total()
+						],
+						'customer'=>[
+							'name'=>$order->get_billing_first_name() . ' ' . $order->get_billing_last_name(),
+							'email'=>$order->get_billing_email(),
+							'phone'=>$order->get_billing_phone(),
+							'billingAddress'=>[
+								'address1'=>$order->get_billing_address_1(),
+								'address2'=>$order->get_billing_address_2(),
+								'city'=>$order->get_billing_city(),
+								'countryCode'=>$order->get_billing_country(),
+								'postalCode'=>$order->get_billing_postcode(),
+								'provinceCode'=>$order->get_billing_state()
+							],
+							'shippingAddress'=>[
+								'address1'=>$order->get_shipping_address_1(),
+								'address2'=>$order->get_shipping_address_2(),
+								'city'=>$order->get_shipping_city(),
+								'countryCode'=>$order->get_shipping_country(),
+								'postalCode'=>$order->get_shipping_postcode(),
+								'provinceCode'=>$order->get_shipping_state()
+							],
+							'product'=>[
+								'referenceId'=>$covered_id,
+								'purchasePrice'=>[
+									'currencyCode'=>'USD',
+									'amount'=>$prices[$covered_id]*100
+								]
+							],
+							'currency'=>'USD',
+							'source'=>[
+								'agentId'=>'',
+								'channel'=>'web',
+								'integratorId'=>'netsuite',
+								'locationId'=>'',
+								'platform'=>'woocommerce'
+								],
+							'transactionDate'=>strtotime($order->get_date_paid()),
+							'plan'=>[
+								'purchasePrice'=>[
+									'currencyCode'=>'USD',
+									'amount'=>$data['price']
+								],
+								'planId'=>$data['planId']
+							]
+						]
+					];
+
+					error_log(print_r($contract_data, true));
+
+
+
+				}
 
 
 			}
 		}
 
-		error_log(print_r($items, true));
+
 	}
 
 	public function checkout_details($data, $cart_item){

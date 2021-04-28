@@ -138,6 +138,10 @@ final class Extend_For_WooCommerce {
 	 */
 	protected $cart;
 
+	protected $service_url = '';
+	protected $mode = '';
+	protected $api_key ='';
+
 	/**
 	 * Creates or returns an instance of this class.
 	 *
@@ -161,6 +165,20 @@ final class Extend_For_WooCommerce {
 		$this->basename = plugin_basename( __FILE__ );
 		$this->url      = plugin_dir_url( __FILE__ );
 		$this->path     = plugin_dir_path( __FILE__ );
+
+		$mode = get_option('wc_extend_sandbox');
+		if($mode==='yes'){
+			$this->mode = 'sandbox';
+			$this->service_url = 'https://api-demo.helloextend.com';
+		}else{
+			$this->mode = 'live';
+			$this->service_url = 'https://api.helloextend.com';
+		}
+		$store_id = get_option('wc_extend_store_id');
+		if($store_id){
+			$this->service_url .= '/stores/' . $store_id . '/products';
+		}
+		$this->api_key = get_option('wc_extend_api_key');
 	}
 
 	/**
@@ -188,7 +206,73 @@ final class Extend_For_WooCommerce {
 		add_action( 'init', array( $this, 'init' ), 0 );
 
 	}
+	/**
+	 * @param $url
+	 * @param string $method
+	 * @param array $url_args
+	 * @param array $body_fields
+	 * @param array $headers
+	 *
+	 * @return array
+	 */
+	public function remote_request( $url, $method = 'GET', $url_args = array(), $body_fields = array() ) {
 
+		$headers = array(
+			'Accept'=> 'application/json; version=2021-04-01',
+			'Content-Type' => 'application/json; charset=utf-8',
+
+		);
+
+		$headers['X-Extend-Access-Token']=$this->api_key;
+
+		// Add url args (get parameters) to the main url
+		if ( $url_args ) $url = add_query_arg( $url_args, $url );
+
+		// Prepare arguments for wp_remote_request
+		$args = array();
+
+		if ( $method ) $args['method'] = $method;
+		if ( $headers ) $args['headers'] = $headers;
+		if ( $body_fields ) $args['body'] = json_encode( $body_fields );
+
+//		error_log(print_r(compact('url', 'args'), true));
+
+		// Make the request
+		$response = wp_remote_request($url, $args);
+
+		// Get the results
+		$response_code = wp_remote_retrieve_response_code( $response );
+		$response_message = wp_remote_retrieve_response_message( $response );
+		$response_body = wp_remote_retrieve_body( $response );
+
+		// Decode the JSON in the body, if it is json
+		if ( $response_body ) {
+			$j = json_decode( $response_body );
+
+			if ( $j ) $response_body = $j;
+		}
+
+		// Return this information in the same format for success or error. Includes debugging information.
+		return array(
+			'response_body' => $response_body,
+			'response_code' => $response_code,
+			'response_message' => $response_message,
+			'response' => $response,
+			'debug' => array(
+				'file' => __FILE__,
+				'line' => __LINE__,
+				'function' => __FUNCTION__,
+				'args' => array(
+					'url' => $url,
+					'method' => $method,
+					'url_args' => $url_args,
+					'body_fields' => $body_fields,
+					'headers' => $headers,
+				),
+			)
+		);
+
+	}
 	/**
 	 * Activate the plugin.
 	 *
