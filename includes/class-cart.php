@@ -32,7 +32,7 @@ class EFWC_Cart {
 	public function __construct( $plugin ) {
 		$this->plugin = $plugin;
 		$this->hooks();
-		$this->warranty_product_id = 415768;
+		$this->warranty_product_id = get_option('wc_extend_product_id');
 	}
 
 	/**
@@ -193,7 +193,12 @@ class EFWC_Cart {
 	}
 	public function maybe_send_contract($order_id){
 
-		$this->send_contracts($order_id);
+		$sent = get_post_meta($order_id, '_extend_contracts', true);
+
+		if(!$sent){
+			$this->send_contracts($order_id);
+		}
+
 
 	}
 

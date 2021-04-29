@@ -5,6 +5,7 @@ let product_ids = window.WCExtend.ids;
 let environment = window.WCExtend.environment;
 
 
+
 jQuery(document).ready(function(){
     Extend.config({
         storeId: store_id ,
@@ -42,7 +43,7 @@ jQuery(document).ready(function(){
     jQuery('form.cart').append('<input type="hidden" name="planData"  id="planData"/>');
 
 
-    jQuery('button.single_add_to_cart_button').on('click', function(e) {
+    jQuery('button.single_add_to_cart_button').on('click', function extendHandler(e) {
         e.preventDefault()
 
         // /** get the component instance rendered previously */
@@ -55,7 +56,8 @@ jQuery(document).ready(function(){
         if (plan) {
 
             jQuery('#planData').val(JSON.stringify(plan));
-            jQuery('form.cart').submit();
+            jQuery('button.single_add_to_cart_button').off('click', extendHandler);
+            jQuery('button.single_add_to_cart_button').trigger('click');
 
         } else{
             Extend.modal.open({
@@ -63,10 +65,13 @@ jQuery(document).ready(function(){
                 onClose: function(plan, product) {
                     if (plan && product) {
                         jQuery('#planData').val(JSON.stringify(plan));
-                        jQuery('form.cart').submit();
+                        
+                        jQuery('button.single_add_to_cart_button').off('click', extendHandler);
+                        jQuery('button.single_add_to_cart_button').trigger('click');
                     } else {
+                        jQuery('button.single_add_to_cart_button').off('click', extendHandler);
+                        jQuery('button.single_add_to_cart_button').trigger('click');
 
-                        jQuery('form.cart').submit();
 
                     }
                 },

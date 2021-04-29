@@ -175,6 +175,15 @@ class EFWC_Products {
 				'id'          => 'wc_extend_api_key',
 				'desc_tip'    => true,
 			),
+			array(
+				'name' => __( 'Coverage Product Id', 'extend-for-woocommerce' ),
+				'type'        => 'text',
+				'desc'        => __( 'This is the product id for the Extend Warranty product', 'extend-for-woocommerce' ),
+				'default'     => '',
+				'placeholder' => __( '', 'extend-for-woocommerce' ),
+				'id'          => 'wc_extend_product_id',
+				'desc_tip'    => true,
+			),
 
 			array(
 				'name'     => __( 'Exclude Categories for Extended Warranty offers', 'extend-for-woocommerce' ),
