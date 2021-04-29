@@ -476,6 +476,7 @@ final class Extend_For_WooCommerce {
 			case 'frontend':
 			case 'cart':
             case 'store_id':
+            case 'mode':
 				return $this->$field;
 			default:
 				throw new Exception( 'Invalid ' . __CLASS__ . ' property: ' . $field );

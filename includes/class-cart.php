@@ -47,13 +47,14 @@ class EFWC_Cart {
 		add_filter('woocommerce_order_item_name', [$this, 'order_item_name'], 10, 3);
 		add_action('woocommerce_before_calculate_totals', [$this, 'update_price']);
 		add_filter('woocommerce_get_item_data', [$this, 'checkout_details'], 10, 2);
-//		add_action('woocommerce_checkout_order_processed', [$this, 'process_checkout'], 10, 3);
+
 		add_action('woocommerce_checkout_create_order_line_item', [$this, 'order_item_meta'], 10, 3);
 		add_action('woocommerce_order_status_processing', [$this, 'maybe_send_contract']);
 		add_action('woocommerce_order_fully_refunded', [$this, 'process_full_refund']);
 		add_action('woocommerce_order_status_refunded', [$this, 'process_full_refund']);
 		add_filter('woocommerce_add_cart_item_data', [$this, 'unique_cart_items'], 10, 2);
 		add_action('woocommerce_create_refund', [$this, 'process_partial_refund'], 10, 2);
+		add_action('woocommerce_check_cart_items', [$this, 'validate_cart']);
 
 		/** todo
 		 *
@@ -65,6 +66,66 @@ class EFWC_Cart {
 		 *
 		 *  allow to add coverage from cart page
 		 */
+	}
+
+	public function validate_cart(){
+
+
+		$items = [];
+
+
+		$coverage_items = [];
+		foreach(WC()->cart->get_cart_contents() as $line){
+
+			if($line['product_id'] === $this->warranty_product_id){
+				$covered_id =
+						$line['extendData']['covered_product_id'];
+
+				if(!isset($coverage_items[$covered_id])){
+					$coverage_items[$covered_id]=[
+						'qty'=>1,
+						'keys'=>[$line['key']]
+					];
+				}else{
+					$coverage_items[$covered_id]['qty']++;
+					$coverage_items[$covered_id]['keys'][] = $line['key'];
+				}
+
+			}else{
+
+				$id = $line['variation_id']>0?$line['variation_id']:$line['product_id'];
+				$qty = intval($line['quantity']);
+				if(!isset($items[$id])){
+
+					$items[$id] = [
+						'title'=>$line['data']->get_name(),
+						'qty'=>$qty
+					];
+				}else{
+					$items[$id]['qty'] += $qty;
+				}
+
+
+			}
+
+		}
+
+		foreach($coverage_items as $prod_id=>$coverage){
+
+			if(isset($items[$prod_id]) && $items[$prod_id]['qty'] < $coverage['qty']){
+				$name = $items[$prod_id]['title'];
+				$diff = $coverage['qty'] - $items[$prod_id]['qty'];
+				wc_add_notice("There are more Warranty products in the cart than $name Remove $diff to continue", 'error');
+				return false;
+			}elseif(!isset($items[$prod_id])){
+
+				foreach($coverage['keys'] as $cart_item_key){
+					WC()->cart->remove_cart_item( $cart_item_key );
+				}
+
+				return false;
+			}
+		}
 	}
 
 	/**
@@ -149,6 +210,8 @@ class EFWC_Cart {
 			$sku = $cart_item['extendData']['planId'];
 			$covered_title = $covered->get_title();
 
+
+
 			$item->add_meta_data('Warranty', $title);
 			$item->add_meta_data('Warranty Term', $term . ' Months');
 			$item->add_meta_data('Plan Id', $sku);
@@ -210,7 +273,7 @@ class EFWC_Cart {
 
 			foreach ( $cart_items as $key => $value ) {
 				if(isset($value['extendData'])){
-					$value['data']->set_price( $value['extendData']['price']/100 );
+					$value['data']->set_price( round($value['extendData']['price']/100, 2) );
 				}
 
 			}
@@ -240,22 +303,14 @@ class EFWC_Cart {
 
 	public function add_to_cart($cart_item_key, $product_id, $quantity, $variation_id, $variation, $cart_item_data){
 
-		if(isset($cart_item_data['extendData'])){
-
-
-			$price = $cart_item_data['extendData']['price']/100;
-
-			WC()->cart->cart_contents[$cart_item_key]['data']->set_price($price);
-
-		}
-
-	}
-
-	public function ajax_added_to_cart($product_id){
 
 		if(isset($_POST['planData'])){
-			$plan = $_POST['planData']['plan'];
-			$plan['covered_product_id'] = $product_id;
+			$plan = json_decode(str_replace('\\', '', $_POST['planData']), true);
+			unset($_POST['planData']);
+			if(empty($plan)){
+				return;
+			}
+			$plan['covered_product_id'] = $variation_id?$variation_id: $product_id;
 			$qty = filter_input(INPUT_POST, 'quantity');
 			try{
 				for($i = 0; $i < $qty; $i++){
@@ -266,7 +321,18 @@ class EFWC_Cart {
 				error_log($e->getMessage());
 			}
 		}
+
+		if(isset($cart_item_data['extendData'])){
+
+
+			$price = round($cart_item_data['extendData']['price']/100, 2);
+
+			WC()->cart->cart_contents[$cart_item_key]['data']->set_price($price);
+
+		}
+
 	}
+
 
 	/**
 	 * @param $order_id
@@ -350,8 +416,6 @@ class EFWC_Cart {
 
 					];
 
-					error_log( print_r( $contract_data, true ) );
-
 				$res =	$this->plugin->remote_request( '/contracts', 'POST', $contract_data );
 
 				if($res['response_code'] === 201){
@@ -360,7 +424,7 @@ class EFWC_Cart {
 				}
 
 
-				error_log(print_r($res, true));
+//				error_log(print_r($res, true));
 				}
 
 

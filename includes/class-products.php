@@ -46,6 +46,9 @@ class EFWC_Products {
 	 */
 	public function hooks() {
 		add_action('save_post_product', [$this, 'saveProduct'], 99, 3);
+		add_action('save_post_product_variation', [$this, 'saveProduct'], 99, 3);
+		add_action('woocommerce_save_product_variation', [$this, 'updateProduct']);
+		add_action('woocommerce_ajax_save_product_variations', [$this, 'save_variations']);
 
 		add_action(get_class($this->plugin). '_add_product', [$this, 'addProduct']);
 		add_action(get_class($this->plugin). '_update_product', [$this, 'updateProduct']);
@@ -54,9 +57,23 @@ class EFWC_Products {
 		add_action('wp_extend_export_product', [$this, 'exportProduct'], 10, 2);
 		add_action('wp_enqueue_scripts', [$this, 'scripts']);
 		add_action('woocommerce_before_add_to_cart_form', [$this, 'product_offer']);
-		
+
 
 //		add_filter('woocommerce_add_cart_item', [$this, 'add_cart_item']);
+
+	}
+
+	public function save_variations($product_id){
+
+		error_log('saving variations for ' . $product_id);
+		$product = wc_get_product($product_id);
+		$variations = $product->get_available_variations();
+
+		foreach($variations as $variation){
+			$variation_id = $variation['variation_id'];
+
+			$this->updateProduct($variation_id);
+		}
 
 	}
 
@@ -71,13 +88,26 @@ class EFWC_Products {
 	public function product_offer(){
 		global $product;
 
+		if($this->isExcluded($product) ){
+			error_log('not available');
+			return;
+		}
 		$id = $product->get_id();
 
 		$store_id = get_option('wc_extend_store_id');
+		$type = $product->get_type();
+		
+		$environment = $this->plugin->mode === 'sandbox'?'demo':'live';
+
+		if($type === 'variable'){
+			$ids = $product->get_children();
+		}else{
+			$ids = [$id];
+		}
 		if($store_id){
 			wp_enqueue_script('extend_script');
 			wp_enqueue_script('extend_warranty_script');
-			wp_localize_script('extend_warranty_script', 'WCExtend', compact('store_id', 'id'));
+			wp_localize_script('extend_warranty_script', 'WCExtend', compact('store_id', 'id', 'type', 'ids', 'environment'));
 			echo "<div id=\"extend-offer\"></div>";
 
 
@@ -163,6 +193,7 @@ class EFWC_Products {
 	}
 
 	public function saveProduct($post_id, $post, $update){
+
 		if($update){
 //			wp_schedule_single_event(time(),get_class($this->plugin). '_update_product', [$post_id] );
 			$this->updateProduct($post_id);
@@ -207,19 +238,48 @@ class EFWC_Products {
 
 	}
 
+	public function get_variation_title($variation){
+		$attributes = $variation->get_variation_attributes();
+		$atts = [];
+		foreach($attributes as $key=>$val){
+			$key = ucwords( str_replace('-', ' ',str_replace('attribute_', '', $key)));
+			$atts[] = $key .': ' . $val;
+		}
+
+		return $variation->get_title() . '(' . implode(', ', $atts) . ')';
+	}
+
 	public function addProduct($id){
 
 		$data = $this->getProductData($id);
 		$res = $this->plugin->remote_request('/products', 'POST', $data, ['upsert'=>false]);
-
+		update_post_meta($id, '_extend_added', true);
 	}
 
 	public function updateProduct($id){
-
+		error_log('updating ' . $id);
 		$data = $this->getProductData($id);
-		
-		$res = $this->plugin->remote_request('/products', 'POST',  $data, ['upsert'=>true]);
 
+		$exists = get_post_meta($id, '_extend_added', true);
+
+		if($exists){
+			$res = $this->plugin->remote_request('/products/'. $id, 'PUT',  $data);
+
+			if($res['response_code']=== 404){
+				$res = $this->plugin->remote_request('/products', 'POST', $data, ['upsert'=>true]);
+			}
+		}else{
+			$res = $this->plugin->remote_request('/products', 'POST', $data, ['upsert'=>true]);
+
+			if($res['response_code']=== 409 ){
+
+				update_post_meta($id, '_extend_added', true);
+
+				$res = $this->plugin->remote_request('/products/'. $id, 'PUT',  $data);
+			}
+
+
+		}
 
 
 	}
@@ -245,7 +305,7 @@ class EFWC_Products {
 
 
 		$image = get_the_post_thumbnail_url($id);
-
+		$title = $product->get_title();
 		if($product->get_parent_id()>0){
 			$parent = wc_get_product($product->get_parent_id());
 			$brand = $parent->get_attribute('pa_product-brand');
@@ -258,6 +318,7 @@ class EFWC_Products {
 				$image = get_the_post_thumbnail_url($product->get_parent_id());
 			}
 			$category = $this->getCategory($product->get_parent_id());
+			$title = $this->get_variation_title($product);
 		}else{
 			$brand = $product->get_attribute('pa_product-brand');
 			$description = $product->get_short_description();
@@ -269,6 +330,11 @@ class EFWC_Products {
 			$category = $this->getCategory($id);
 		}
 
+		
+		if(strpos($image, 'www.poolwarehouse.com')===false){
+			$parsed = parse_url($image);
+			$image = 'https://www.poolwarehouse.com' . $parsed['path'];
+		}
 
 
 
@@ -281,7 +347,7 @@ class EFWC_Products {
 		'description'=>substr($description, 0, 2000),
 		'enabled'=>$this->isEnabled($product),
 			'price'=>['currencyCode'=>'USD', 'amount'=> $product->get_price()],
-		'title'=>$product->get_title(),
+		'title'=>$title,
 			'imageUrl'=>$image,
 			'identifiers'=>[
 				'sku'=>$product->get_sku()
