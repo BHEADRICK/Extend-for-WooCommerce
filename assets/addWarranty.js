@@ -60,22 +60,25 @@ jQuery(document).ready(function(){
             jQuery('button.single_add_to_cart_button').trigger('click');
 
         } else{
-            Extend.modal.open({
-                referenceId: product_id,
-                onClose: function(plan, product) {
-                    if (plan && product) {
-                        jQuery('#planData').val(JSON.stringify(plan));
-                        
-                        jQuery('button.single_add_to_cart_button').off('click', extendHandler);
-                        jQuery('button.single_add_to_cart_button').trigger('click');
-                    } else {
-                        jQuery('button.single_add_to_cart_button').off('click', extendHandler);
-                        jQuery('button.single_add_to_cart_button').trigger('click');
+            if(jQuery('#planData').val()===''){
+                Extend.modal.open({
+                    referenceId: product_id,
+                    onClose: function(plan, product) {
+                        if (plan && product) {
+                            jQuery('#planData').val(JSON.stringify(plan));
+
+                            jQuery('button.single_add_to_cart_button').off('click', extendHandler);
+                            jQuery('button.single_add_to_cart_button').trigger('click');
+                        } else {
+                            jQuery('button.single_add_to_cart_button').off('click', extendHandler);
+                            jQuery('button.single_add_to_cart_button').trigger('click');
 
 
-                    }
-                },
-            });
+                        }
+                    },
+                });
+            }
+
         }
 
 

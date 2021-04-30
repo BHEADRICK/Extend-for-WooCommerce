@@ -41,7 +41,7 @@ class EFWC_Cart {
 	 * @since  0.0.0
 	 */
 	public function hooks() {
-		add_action('woocommerce_ajax_added_to_cart', [$this, 'ajax_added_to_cart']);
+//		add_action('woocommerce_ajax_added_to_cart', [$this, 'ajax_added_to_cart']);
 		add_action('woocommerce_add_to_cart', [$this, 'add_to_cart'], 10, 6);
 		add_filter('woocommerce_cart_item_name', [$this, 'cart_item_name'], 10, 3);
 		add_filter('woocommerce_order_item_name', [$this, 'order_item_name'], 10, 3);
@@ -56,6 +56,9 @@ class EFWC_Cart {
 		add_action('woocommerce_create_refund', [$this, 'process_partial_refund'], 10, 2);
 		add_action('woocommerce_check_cart_items', [$this, 'validate_cart']);
 
+		add_action('woocommerce_after_cart_item_name', [$this, 'after_cart_item_name'], 10, 2);
+		add_action('woocommerce_after_cart', [$this, 'cart_offers']);
+
 		/** todo
 		 *
 		 *  if there are more coverage items than covered items,
@@ -68,6 +71,63 @@ class EFWC_Cart {
 		 */
 	}
 
+	private function product_has_coverage($product_id){
+		foreach(WC()->cart->get_cart_contents() as $line) {
+
+			if ( intval( $line['product_id'] ) === intval( $this->warranty_product_id ) ) {
+				if(intval($product_id) ===
+					intval($line['extendData']['covered_product_id'])){
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	public function cart_offers(){
+		$offers = [];
+		foreach(WC()->cart->get_cart_contents() as $line) {
+
+			if ( intval( $line['product_id'] ) !== intval( $this->warranty_product_id ) ) {
+				$offers[] =
+					$line['variation_id']>0?$line['variation_id']:$line['product_id'];
+			}
+		}
+
+			$store_id = get_option('wc_extend_store_id');
+
+
+		$warranty_prod_id = $this->warranty_product_id;
+
+			$environment = $this->plugin->mode === 'sandbox'?'demo':'live';
+
+			$ids = array_unique($offers);
+			if($store_id){
+				wp_enqueue_script('extend_script');
+				wp_enqueue_script('extend_cart_script');
+				wp_localize_script('extend_cart_script', 'WCCartExtend', compact('store_id',  'ids', 'environment', 'warranty_prod_id'));
+
+			}
+
+
+
+	}
+
+	public function after_cart_item_name($cart_item, $key){
+
+//		error_log(print_r($cart_item, true));
+
+
+		if(!isset($cart_item['extendData'])){
+
+			$item_id = $cart_item['variation_id']?$cart_item['variation_id']:$cart_item['product_id'];
+			if(!$this->product_has_coverage($item_id)  && !$this->plugin->products->isExcluded($cart_item['data'])){
+				echo "<div id='". $key ."_offer' class='cart-extend-offer' data-covered='$item_id'> ";
+			}
+		}
+
+	}
+
 	public function validate_cart(){
 
 
@@ -77,17 +137,20 @@ class EFWC_Cart {
 		$coverage_items = [];
 		foreach(WC()->cart->get_cart_contents() as $line){
 
-			if(intval($line['product_id']) === intval($this->warranty_product_id)){
+			if(intval($line['product_id']) === intval($this->warranty_product_id) && isset($line['extendData'])){
+
+
+
 				$covered_id =
 						$line['extendData']['covered_product_id'];
 
 				if(!isset($coverage_items[$covered_id])){
 					$coverage_items[$covered_id]=[
-						'qty'=>1,
+						'qty'=>$line['quantity'],
 						'keys'=>[$line['key']]
 					];
 				}else{
-					$coverage_items[$covered_id]['qty']++;
+					$coverage_items[$covered_id]['qty'] += $line['quantity'];
 					$coverage_items[$covered_id]['keys'][] = $line['key'];
 				}
 
@@ -109,6 +172,7 @@ class EFWC_Cart {
 			}
 
 		}
+
 
 		foreach($coverage_items as $prod_id=>$coverage){
 
@@ -161,7 +225,7 @@ class EFWC_Cart {
 
 	public function unique_cart_items($cart_item_data, $product_id){
 
-	if($product_id === $this->warranty_product_id){
+	if($product_id === intval($this->warranty_product_id)){
 		$unique_cart_item_key = md5( microtime() . rand() );
 		$cart_item_data['unique_key'] = $unique_cart_item_key;
 
@@ -193,12 +257,14 @@ class EFWC_Cart {
 	}
 	public function maybe_send_contract($order_id){
 
+
+
 		$sent = get_post_meta($order_id, '_extend_contracts', true);
 
 		if(!$sent){
+
 			$this->send_contracts($order_id);
 		}
-
 
 	}
 
@@ -260,13 +326,15 @@ class EFWC_Cart {
 				'key'=>'Coverage Term',
 				'value'=>$term . ' Months'
 			];
-			
+
 		}
 
 
 
 		return $data;
 	}
+
+
 
 	public function update_price($cart_object){
 		$cart_items = $cart_object->cart_contents;
@@ -315,13 +383,23 @@ class EFWC_Cart {
 			$plan['covered_product_id'] = $variation_id?$variation_id: $product_id;
 			$qty = filter_input(INPUT_POST, 'quantity');
 			try{
-				for($i = 0; $i < $qty; $i++){
-					WC()->cart->add_to_cart($this->warranty_product_id, 1, 0, 0, ['extendData'=>$plan] );
-				}
+
+					WC()->cart->add_to_cart($this->warranty_product_id, $qty, 0, 0, ['extendData'=>$plan] );
+				
 
 			}catch(Exception $e){
 				error_log($e->getMessage());
 			}
+		}
+
+		if(isset($_POST['extendData'])){
+
+			$plan = $_POST['extendData'];
+			WC()->cart->cart_contents[$cart_item_key]['extendData'] = $plan;
+			$price = round($plan['price']/100, 2);
+
+			WC()->cart->cart_contents[$cart_item_key]['data']->set_price($price);
+
 		}
 
 		if(isset($cart_item_data['extendData'])){
@@ -335,10 +413,38 @@ class EFWC_Cart {
 
 	}
 
+	/**
+	 * @param $order_id integer
+	 * @param $order WC_Order
+	 * @param $product_id integer
+	 * @param $qty integer
+	 */
+	private function send_lead($order_id, $order, $product_id, $qty, $price){
+
+		$lead_data = [
+			'customer'=>[
+				'email'=>$order->get_billing_email()
+			],
+			'quantity'=>$qty,
+			'product'=>[
+				'purchasePrice'=>[
+					'currencyCode' => 'USD',
+					'amount'       => $price
+				],
+				'referenceId'=>$product_id,
+				'transactionDate'=>strtotime($order->get_date_paid()),
+				'transactionId'=>$order_id
+			]
+		];
+
+		$res = $this->plugin->remote_request('/leads', 'POST', $lead_data);
+
+	}
+
 
 	/**
-	 * @param $order_id
-	 * @param $order
+	 * @param $order_id integer
+	 * @param $order WC_Order
 	 */
 	private function send_contracts( $order_id, $order = null) {
 
@@ -348,13 +454,18 @@ class EFWC_Cart {
 		$items     = $order->get_items();
 		$contracts = [];
 		$prices    = [];
+		$covered = [];
+		$leads = [];
+
 		foreach ( $items as $item ) {
-			if ( $item->get_product_id() === $this->warranty_product_id ) {
+			if ( intval($item->get_product_id()) === intval($this->warranty_product_id)) {
 				$contracts[] = $item;
 			} else {
-				$prices[ $item->get_product_id() ] = $item->get_subtotal() / $item->get_quantity();
+				$prod_id = $item->get_variation_id()?$item->get_variation_id():$item->get_product_id();
+				$prices[$prod_id] = $item->get_subtotal() / $item->get_quantity();
 			}
 		}
+
 		if ( ! empty( $contracts ) ) {
 			$contract_ids = [];
 			foreach ( $contracts as $item ) {
@@ -363,6 +474,7 @@ class EFWC_Cart {
 				if ( $data ) {
 
 					$covered_id = $data['covered_product_id'];
+					$covered[] = $covered_id;
 
 					$contract_data = [
 						'transactionId'    => $order_id,
@@ -418,25 +530,38 @@ class EFWC_Cart {
 
 					];
 
+
+
 				$res =	$this->plugin->remote_request( '/contracts', 'POST', $contract_data );
 
-				if($res['response_code'] === 201){
+				if(intval($res['response_code']) === 201){
 					$item->add_meta_data("Extend Status", $res['response_body']->status);
 				$contract_ids[$item_id]=	$res['response_body']->id;
 				}
-
-
 //				error_log(print_r($res, true));
 				}
 
 
 			}
+
 			if(!empty($contract_ids)){
 
-
-
 				update_post_meta($order_id, '_extend_contracts', $contract_ids);
+
 			}
 		}
+
+//		foreach($items as $item){
+//			$product_id = $item->get_variation_id()?$item->get_variation_id():$item->get_product_id();
+//			if(!in_array($product_id, $covered)){
+//				$leads[$item->get_id()] = 	$this->send_lead($order_id, $order, $product_id,$item->get_quantity(),  $item->get_subtotal() / $item->get_quantity());
+//			}
+//		}
+
+
+//
+//		if(!empty($leads)){
+//			update_post_meta($order_id, '_extend_leads', $contract_ids);
+//		}
 	}
 }

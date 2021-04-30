@@ -83,6 +83,7 @@ class EFWC_Products {
 	public function scripts(){
 		wp_register_script('extend_script', 'https://sdk.helloextend.com/extend-sdk-client/v1/extend-sdk-client.min.js');
 		wp_register_script('extend_warranty_script', $this->plugin->url . 'assets/addWarranty.js', ['jquery', 'extend_script'], filemtime($this->plugin->path .'assets/addWarranty.js' ));
+		wp_register_script('extend_cart_script', $this->plugin->url . 'assets/cartWarrantyOffer.js', ['jquery', 'extend_script'], filemtime($this->plugin->path .'assets/cartWarrantyOffer.js' ));
 	}
 
 	public function product_offer(){
@@ -529,7 +530,11 @@ class EFWC_Products {
 	/**
 	 * @param $product WC_Product
 	 */
-	private function isExcluded($product){
+	public function isExcluded($product){
+
+		if($product->get_parent_id()>0){
+			$product = wc_get_product($product->get_parent_id());
+		}
 		$cats = $product->get_category_ids();
 		$excluded_cat_ids = get_option('wc_extend_disabled_categories');
 		if(!$excluded_cat_ids){
@@ -545,6 +550,7 @@ class EFWC_Products {
 
 
 		}
+
 		return false;
 	}
 
