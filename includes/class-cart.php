@@ -77,7 +77,7 @@ class EFWC_Cart {
 		$coverage_items = [];
 		foreach(WC()->cart->get_cart_contents() as $line){
 
-			if($line['product_id'] === $this->warranty_product_id){
+			if(intval($line['product_id']) === intval($this->warranty_product_id)){
 				$covered_id =
 						$line['extendData']['covered_product_id'];
 
@@ -260,10 +260,7 @@ class EFWC_Cart {
 				'key'=>'Coverage Term',
 				'value'=>$term . ' Months'
 			];
-			$data[] = [
-				'key'=>'Plan Id',
-				'value'=>$sku
-			];
+			
 		}
 
 

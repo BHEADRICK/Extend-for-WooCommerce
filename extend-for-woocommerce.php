@@ -293,37 +293,36 @@ final class Extend_For_WooCommerce {
 		$exported = get_option('wc_extend_exported');
 		if(!$exported){
 
-		    $this->plugin_classes();
-
-		    $disabled_cats = get_option('wc_extend_disabled_categories');
-		    if(!$disabled_cats){
-		        $disabled_cats = [];
-            }
-            $args = [
-	            'posts_per_page'=>-1,
-	            'fields'=>'ids',
-	            'post_type'=>['product'],
-	            'tax_query'=>[
-		            'relation' => 'AND',
-		            [
-			            'taxonomy'=>'product_type',
-			            'field'=>'slug',
-			            'terms'=>['bundle'],
-			            'operator'=>'NOT IN'
-		            ],
-		            [
-			            'taxonomy'=>'product_cat',
-			            'field'=>'term_id',
-			            'terms'=>$disabled_cats,
-			            'operator'=>'NOT IN'
-		            ]
-	            ]
-            ];
-		    $posts = get_posts($args);
-
-		    error_log($wpdb->last_query);
-
-		    $this->products->exportCsv($posts);
+//		    $this->plugin_classes();
+//
+//		    $disabled_cats = get_option('wc_extend_disabled_categories');
+//		    if(!$disabled_cats){
+//		        $disabled_cats = [];
+//            }
+//            $args = [
+//	            'posts_per_page'=>-1,
+//	            'fields'=>'ids',
+//	            'post_type'=>['product'],
+//	            'tax_query'=>[
+//		            'relation' => 'AND',
+//		            [
+//			            'taxonomy'=>'product_type',
+//			            'field'=>'slug',
+//			            'terms'=>['bundle'],
+//			            'operator'=>'NOT IN'
+//		            ],
+//		            [
+//			            'taxonomy'=>'product_cat',
+//			            'field'=>'term_id',
+//			            'terms'=>$disabled_cats,
+//			            'operator'=>'NOT IN'
+//		            ]
+//	            ]
+//            ];
+//		    $posts = get_posts($args);
+//
+//
+//		    $this->products->exportCsv($posts);
 
 
 
