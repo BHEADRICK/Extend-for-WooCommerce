@@ -12,12 +12,25 @@
 
 Extend Integration for WooCommerce
 
-## Installation ##
-
 ### Manual Installation ###
 
 1. Upload the entire `/extend-for-woocommerce` directory to the `/wp-content/plugins/` directory.
 2. Activate Extend for WooCommerce through the 'Plugins' menu in WordPress.
+3. Create a dummy product for the Extend Warranty - this product should be 
+hidden from catalog
+4. Go to WooCommerce > Settings > Products > Extend Warranties and complete the configuation
+including adding the id from the dummy product.
+
+## Notes ##
+For this implementation, the on-product buttons to select the plan are hidden, 
+so the plan options are only displayed after adding to cart.
+
+If you wish to display these, you can fork this plugin and update line 109 on 
+class-products.php
+
+### Refunds ###
+Warranty Contracts can be cancelled/refunded by cancelling the warranty line-item 
+on the order edit screen 
 
 ## Frequently Asked Questions ##
 
