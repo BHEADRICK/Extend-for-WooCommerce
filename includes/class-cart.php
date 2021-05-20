@@ -59,16 +59,48 @@ class EFWC_Cart {
 		add_action('woocommerce_after_cart_item_name', [$this, 'after_cart_item_name'], 10, 2);
 		add_action('woocommerce_after_cart', [$this, 'cart_offers']);
 
-		/** todo
-		 *
-		 *  if there are more coverage items than covered items,
-		 *  display message that one must be removed, and do not allow continue to checkout until this is done.
-		 * 
-		 *  covered item is compoletely removed from cart, automatically remove associated coverage items
-		 *
-		 *
-		 *  allow to add coverage from cart page
-		 */
+		add_action('add_meta_boxes', [$this, 'meta_boxes']);
+
+
+	}
+
+	public function extend_metabox(){
+		global $post;
+
+		$contracts = get_post_meta($post->ID, '_extend_contracts', true);
+
+		if($contracts){
+			$refunds = get_post_meta($post->ID, '_extend_refund_data', true);
+			echo " <ul>";
+
+			foreach($contracts as $cart_item_id=>$contract_id){
+				echo "<li>Contract id: $contract_id";
+
+				if(isset($refunds[$cart_item_id])){
+					echo "<br>Status: Refunded";
+				}else{
+					echo "<br>Status: Active";
+				}
+
+				echo "</li>";
+			}
+
+			echo "</ul>";
+
+
+
+
+		}else{
+			echo '<p>No Extend Contracts found</p>';
+		}
+
+	}
+
+	public function meta_boxes(){
+		add_meta_box('extend_metabox',
+			'Extend Info',
+			[$this, 'extend_metabox'],
+			'shop_order', 'side');
 	}
 
 	private function product_has_coverage($product_id){
@@ -114,8 +146,6 @@ class EFWC_Cart {
 	}
 
 	public function after_cart_item_name($cart_item, $key){
-
-//		error_log(print_r($cart_item, true));
 
 
 		if(!isset($cart_item['extendData'])){
@@ -192,6 +222,42 @@ class EFWC_Cart {
 		}
 	}
 
+	private function capture_refund_data($data){
+
+		$body = $data['response_body'];
+
+		$refunded = $body->refundedAt;
+		$status = $body->status;
+		$id = $body->id;
+
+		return compact('refunded', 'status', 'id');
+
+	}
+
+	public function process_full_refund($order_id){
+
+
+
+		$contracts = get_post_meta($order_id, '_extend_contracts', true);
+
+		if($contracts){
+
+			$refund_details = [];
+			foreach($contracts as $item_id=>$contract_id){
+
+				$res = $this->plugin->remote_request('/contracts/' . $contract_id . '/refund', 'POST', [], ['commit'=>true]);
+				$refund_details[$item_id]= $this->capture_refund_data($res);
+
+
+			}
+
+
+			update_post_meta($order_id, '_extend_refund_data', $refund_details);
+		}
+
+
+	}
+
 	/**
 	 * @param $refund WC_Order_Refund
 	 * @param $args array
@@ -199,23 +265,27 @@ class EFWC_Cart {
 	public function process_partial_refund($refund, $args){
 
 
+
+
 		$order_id = $refund->get_parent_id();
 
-		$extend_data = get_post_meta($order_id, '_extend_data', true);
+		$extend_data = get_post_meta($order_id, '_extend_contracts', true);
 
 		if($extend_data){
-			$items = $refund->get_items();
 
-			foreach($items as $item){
-				if($item->get_product_id() === $this->warranty_product_id && isset($extend_data[$item->get_id()])){
+			$refund_details = [];
+			foreach($args['line_items'] as $item_id=> $item){
+				if( $item['refund_total']>0 && isset($extend_data[$item_id])){
 
-					$contract_id = $extend_data[$item->get_id()];
+					$contract_id = $extend_data[$item_id];
 
 					$res = $this->plugin->remote_request('/contracts/' . $contract_id . '/refund', 'POST', [], ['commit'=>true]);
 
-//					$statuses[$covered_id]= $res['response_body']->status;
+				$refund_details[$item_id]=  $this->capture_refund_data($res);
+
 				}
 			}
+			update_post_meta($order_id, '_extend_refund_data', $refund_details);
 		}
 
 
@@ -236,25 +306,7 @@ class EFWC_Cart {
 		
 	}
 
-	public function process_full_refund($order_id){
 
-		$contracts = get_post_meta($order_id, '_extend_contracts', true);
-
-//		$statuses = [];
-		if($contracts){
-
-			foreach($contracts as $item_id=>$contract_id){
-
-				$res = $this->plugin->remote_request('/contracts/' . $contract_id . '/refund', 'POST', [], ['commit'=>true]);
-
-//				$statuses[$item_id]= $res['response_body']->status;
-
-
-			}
-		}
-
-
-	}
 	public function maybe_send_contract($order_id){
 
 
@@ -538,7 +590,8 @@ class EFWC_Cart {
 					$item->add_meta_data("Extend Status", $res['response_body']->status);
 				$contract_ids[$item_id]=	$res['response_body']->id;
 				}
-//				error_log(print_r($res, true));
+
+
 				}
 
 

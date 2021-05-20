@@ -1,17 +1,16 @@
 <?php
 /**
  * Plugin Name: Extend for WooCommerce
- * Plugin URI:  https://catmanstudios.com
- * Description: A radical new plugin for WordPress!
+ * Plugin URI:  https://github.com/BHEADRICK/Extend-for-WooCommerce
+ * Description: Extend Integration for WooCommerce
  * Version:     0.0.0
  * Author:      Bryan Headrick
- * Author URI:  https://catmanstudios.com
- * Donate link: https://catmanstudios.com
+ * Author URI:  https://bryanheadrick.com
  * License:     GPLv2
  * Text Domain: extend-for-woocommerce
  * Domain Path: /languages
  *
- * @link    https://catmanstudios.com
+ * @link    https://www.extend.com/
  *
  * @package Extend_For_WooCommerce
  * @version 0.0.0
@@ -122,13 +121,6 @@ final class Extend_For_WooCommerce {
 	 */
 	protected $products;
 
-	/**
-	 * Instance of EWC_Frontend
-	 *
-	 * @since0.0.0
-	 * @var EWC_Frontend
-	 */
-	protected $frontend;
 
 	/**
 	 * Instance of EFWC_Cart
@@ -192,7 +184,6 @@ final class Extend_For_WooCommerce {
 	public function plugin_classes() {
 
 		$this->products = new EFWC_Products( $this );
-		$this->frontend = new EFWC_Frontend( $this );
 		$this->cart = new EFWC_Cart( $this );
 	} // END OF PLUGIN CLASSES FUNCTION
 
@@ -239,8 +230,6 @@ final class Extend_For_WooCommerce {
 		if ( $headers ) $args['headers'] = $headers;
 		if ( $body_fields ) $args['body'] = json_encode( $body_fields );
 		$args['timeout'] = 45;
-
-//		error_log(print_r(compact('url', 'args'), true));
 
 		// Make the request
 		$response = wp_remote_request($url, $args);
@@ -290,47 +279,7 @@ final class Extend_For_WooCommerce {
 		}
 
 		global $wpdb;
-		$exported = get_option('wc_extend_exported');
-		if(!$exported){
 
-//		    $this->plugin_classes();
-//
-//		    $disabled_cats = get_option('wc_extend_disabled_categories');
-//		    if(!$disabled_cats){
-//		        $disabled_cats = [];
-//            }
-//            $args = [
-//	            'posts_per_page'=>-1,
-//	            'fields'=>'ids',
-//	            'post_type'=>['product'],
-//	            'tax_query'=>[
-//		            'relation' => 'AND',
-//		            [
-//			            'taxonomy'=>'product_type',
-//			            'field'=>'slug',
-//			            'terms'=>['bundle'],
-//			            'operator'=>'NOT IN'
-//		            ],
-//		            [
-//			            'taxonomy'=>'product_cat',
-//			            'field'=>'term_id',
-//			            'terms'=>$disabled_cats,
-//			            'operator'=>'NOT IN'
-//		            ]
-//	            ]
-//            ];
-//		    $posts = get_posts($args);
-//
-//
-//		    $this->products->exportCsv($posts);
-
-
-
-
-
-
-
-        }
 
 		// Make sure any rewrite functionality has been loaded.
 		flush_rewrite_rules();
@@ -373,7 +322,24 @@ final class Extend_For_WooCommerce {
 
 		// Initialize plugin classes.
 		$this->plugin_classes();
+
+		add_filter('plugin_action_links_' . plugin_basename(__FILE__), [$this, 'plugin_links']);
 	}
+
+	public function plugin_links($links){
+	    $url = esc_url(add_query_arg(
+	            [
+	                    'page'=>'wc-settings',
+                    'tab'=>'products',
+                    'section'=>'warranties'
+                ]
+	            , get_admin_url() . 'admin.php'
+        ));
+	    $settings_link = "<a href='$url' target='_blank'>" .__('Settings') . "</a>";
+	    $extend_link = "<a href='https://www.extend.com/' target='_blank'>Visit Extend</a>";
+	    array_push($links, $settings_link, $extend_link);
+	    return $links;
+    }
 
 	/**
 	 * Check if the plugin meets requirements and
@@ -472,7 +438,6 @@ final class Extend_For_WooCommerce {
 			case 'url':
 			case 'path':
 			case 'products':
-			case 'frontend':
 			case 'cart':
             case 'store_id':
             case 'mode':

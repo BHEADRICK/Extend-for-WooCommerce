@@ -59,13 +59,10 @@ class EFWC_Products {
 		add_action('woocommerce_before_add_to_cart_form', [$this, 'product_offer']);
 
 
-//		add_filter('woocommerce_add_cart_item', [$this, 'add_cart_item']);
-
 	}
 
 	public function save_variations($product_id){
 
-		error_log('saving variations for ' . $product_id);
 		$product = wc_get_product($product_id);
 		$variations = $product->get_available_variations();
 
@@ -90,7 +87,7 @@ class EFWC_Products {
 		global $product;
 
 		if($this->isExcluded($product) ){
-			error_log('not available');
+
 			return;
 		}
 		$id = $product->get_id();
@@ -147,8 +144,8 @@ class EFWC_Products {
 		return array(
 			array(
 				'name' => __( 'Storewide Warranty Configuration', 'extend-for-woocommerce' ),
+				'desc'=>'',
 				'type' => 'title',
-				'desc' => __( 'These settings affect all products storewide. You can override these settings on a per product basis to make exceptions.', 'extend-for-woocommerce' ),
 				'id'   => 'wc_extend_title',
 			),
 			array(
@@ -267,7 +264,7 @@ class EFWC_Products {
 	}
 
 	public function updateProduct($id){
-		error_log('updating ' . $id);
+
 		$data = $this->getProductData($id);
 
 		$exists = get_post_meta($id, '_extend_added', true);
@@ -437,7 +434,7 @@ class EFWC_Products {
 			fputcsv($fp, $this->csv_fields);
 			fclose($fp);
 		}else{
-			error_log('unable to open  for writing: ' > $filename);
+			error_log('unable to open  for writing: ' . $filename);
 		}
 		chmod($filename, 0755);
 

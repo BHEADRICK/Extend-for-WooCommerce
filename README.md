@@ -1,6 +1,6 @@
 # Extend for WooCommerce #
 **Contributors:**      Bryan Headrick  
-**Donate link:**       https://catmanstudios.com  
+**Donate link:**       https://bryanheadrick.com  
 **Tags:**  
 **Requires at least:** 4.4  
 **Tested up to:**      4.8.1 
@@ -10,7 +10,7 @@
 
 ## Description ##
 
-A radical new plugin for WordPress!
+Extend Integration for WooCommerce
 
 ## Installation ##
 
@@ -24,6 +24,13 @@ A radical new plugin for WordPress!
 
 ## Screenshots ##
 
+## Requirements ##
+
+Must have an account with Extend (https://www.extend.com/)
+
+## API Reference ##
+Not all features are implemented, but this provides a solid foundation.
+For information on all features, see (https://developers.extend.com/2021-04-01)
 
 ## Changelog ##
 
