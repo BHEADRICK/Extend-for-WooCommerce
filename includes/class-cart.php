@@ -152,7 +152,7 @@ class EFWC_Cart {
 
 			$item_id = $cart_item['variation_id']?$cart_item['variation_id']:$cart_item['product_id'];
 			if(!$this->product_has_coverage($item_id)  && !$this->plugin->products->isExcluded($cart_item['data'])){
-				echo "<div id='". $key ."_offer' class='cart-extend-offer' data-covered='$item_id'> ";
+				echo "<div id='offer_$item_id' class='cart-extend-offer' data-covered='$item_id'> ";
 			}
 		}
 

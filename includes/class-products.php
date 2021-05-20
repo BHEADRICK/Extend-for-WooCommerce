@@ -80,7 +80,7 @@ class EFWC_Products {
 	public function scripts(){
 		wp_register_script('extend_script', 'https://sdk.helloextend.com/extend-sdk-client/v1/extend-sdk-client.min.js');
 		wp_register_script('extend_warranty_script', $this->plugin->url . 'assets/addWarranty.js', ['jquery', 'extend_script'], filemtime($this->plugin->path .'assets/addWarranty.js' ));
-		wp_register_script('extend_cart_script', $this->plugin->url . 'assets/cartWarrantyOffer.js', ['jquery', 'extend_script'], filemtime($this->plugin->path .'assets/cartWarrantyOffer.js' ));
+		wp_register_script('extend_cart_script', $this->plugin->url . 'assets/cartWarrantyOffer.js', ['jquery', 'extend_script'], filemtime($this->plugin->path .'assets/cartWarrantyOffer.js' ), true);
 	}
 
 	public function product_offer(){
