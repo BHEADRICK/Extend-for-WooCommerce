@@ -7,7 +7,7 @@ let warranty_prod_id = window.WCCartExtend.warranty_prod_id;
 
 
 
-jQuery(document).ready(function() {
+// jQuery(document).ready(function() {
     Extend.config({
         storeId: store_id,
         environment: environment,
@@ -49,4 +49,4 @@ jQuery(document).ready(function() {
         });
     })
 
-});
+// });
