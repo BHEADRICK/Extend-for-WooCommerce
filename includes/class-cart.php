@@ -513,7 +513,11 @@ class EFWC_Cart {
 
 		foreach ( $items as $item ) {
 			if ( intval($item->get_product_id()) === intval($this->warranty_product_id)) {
-				$contracts[] = $item;
+				$qty = $item->get_quantity();
+				for($i = 0; $i < $qty; $i++){
+					$contracts[] = $item;
+				}
+
 			} else {
 				$prod_id = $item->get_variation_id()?$item->get_variation_id():$item->get_product_id();
 				$prices[$prod_id] = $item->get_subtotal() / $item->get_quantity();
