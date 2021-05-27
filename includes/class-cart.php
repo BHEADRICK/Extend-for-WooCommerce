@@ -206,11 +206,13 @@ class EFWC_Cart {
 
 		foreach($coverage_items as $prod_id=>$coverage){
 
-			if(isset($items[$prod_id]) && $items[$prod_id]['qty'] < $coverage['qty']){
+			if(isset($items[$prod_id]) && $items[$prod_id]['qty'] != $coverage['qty']){
 				$name = $items[$prod_id]['title'];
 				$diff = $coverage['qty'] - $items[$prod_id]['qty'];
-				wc_add_notice("There are more Warranty products in the cart than $name Remove $diff to continue", 'error');
-				return false;
+				foreach($coverage['keys'] as $cart_item_key){
+					WC()->cart->set_quantity( $cart_item_key ,$items[$prod_id]['qty'] );
+				}
+
 			}elseif(!isset($items[$prod_id])){
 
 				foreach($coverage['keys'] as $cart_item_key){
