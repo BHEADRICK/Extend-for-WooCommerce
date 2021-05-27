@@ -41,6 +41,8 @@ class EFWC_Cart {
 	 * @since  0.0.0
 	 */
 	public function hooks() {
+
+		add_action(get_class($this->plugin). '_send_contracts', [$this, 'send_contracts']);
 //		add_action('woocommerce_ajax_added_to_cart', [$this, 'ajax_added_to_cart']);
 		add_action('woocommerce_add_to_cart', [$this, 'add_to_cart'], 10, 6);
 		add_filter('woocommerce_cart_item_name', [$this, 'cart_item_name'], 10, 3);
@@ -73,16 +75,20 @@ class EFWC_Cart {
 			$refunds = get_post_meta($post->ID, '_extend_refund_data', true);
 			echo " <ul>";
 
-			foreach($contracts as $cart_item_id=>$contract_id){
-				echo "<li>Contract id: $contract_id";
+			foreach($contracts as $cart_item_id=>$line){
 
-				if(isset($refunds[$cart_item_id])){
-					echo "<br>Status: Refunded";
-				}else{
-					echo "<br>Status: Active";
+				foreach($line as $contract_id){
+					echo "<li>Contract id: $contract_id";
+
+					if(isset($refunds[$cart_item_id])){
+						echo "<br>Status: Refunded";
+					}else{
+						echo "<br>Status: Active";
+					}
+
+					echo "</li>";
 				}
 
-				echo "</li>";
 			}
 
 			echo "</ul>";
@@ -509,7 +515,7 @@ class EFWC_Cart {
 		$contracts = [];
 		$prices    = [];
 		$covered = [];
-		$leads = [];
+//		$leads = [];
 
 		foreach ( $items as $item ) {
 			if ( intval($item->get_product_id()) === intval($this->warranty_product_id)) {
@@ -593,8 +599,12 @@ class EFWC_Cart {
 				$res =	$this->plugin->remote_request( '/contracts', 'POST', $contract_data );
 
 				if(intval($res['response_code']) === 201){
+
+					if(!isset($contract_ids[$item_id])){
+						$contract_ids[$item_id] = [];
+					}
 					$item->add_meta_data("Extend Status", $res['response_body']->status);
-				$contract_ids[$item_id]=	$res['response_body']->id;
+				$contract_ids[$item_id][]=	$res['response_body']->id;
 				}
 
 
