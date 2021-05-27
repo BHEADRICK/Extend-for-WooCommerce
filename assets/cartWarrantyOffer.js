@@ -4,7 +4,9 @@ let product_ids = window.WCCartExtend.ids;
 let environment = window.WCCartExtend.environment;
 let warranty_prod_id = window.WCCartExtend.warranty_prod_id;
 
-
+jQuery(document.body).on('updated_cart_totals', function(){
+    loadCartOffers();
+})
 
 
 // jQuery(document).ready(function() {
@@ -15,11 +17,12 @@ let warranty_prod_id = window.WCCartExtend.warranty_prod_id;
     });
 
 
+function loadCartOffers(){
     jQuery('.cart-extend-offer').each(function(ix, val){
         let ref_id =  jQuery(val).data('covered');
         let qty = jQuery(val).parents('.cart_item').find('input.qty').val();
 
-    /** initialize offer */
+        /** initialize offer */
         Extend.buttons.renderSimpleOffer('#'+this.id, {
             referenceId: ref_id,
             onAddToCart:
@@ -48,5 +51,11 @@ let warranty_prod_id = window.WCCartExtend.warranty_prod_id;
                 },
         });
     })
+}
+
+
+loadCartOffers();
+
+
 
 // });
