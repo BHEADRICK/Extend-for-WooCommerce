@@ -37,7 +37,6 @@ function loadCartOffers(){
                             extendData: plan
                         };
 
-                        console.log(plan, product);
                         jQuery.post( wc_add_to_cart_params.wc_ajax_url.toString().replace( '%%endpoint%%', 'add_to_cart' ), data, function( response ) {
                             if (!response) {
                                 return;
