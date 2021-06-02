@@ -136,6 +136,14 @@ final class Extend_For_WooCommerce {
 	protected $store_id;
 
 	/**
+	 * Instance of EFWC_Contracts
+	 *
+	 * @since0.0.0
+	 * @var EFWC_Contracts
+	 */
+	protected $contracts;
+
+	/**
 	 * Creates or returns an instance of this class.
 	 *
 	 * @since   0.0.0
@@ -185,6 +193,7 @@ final class Extend_For_WooCommerce {
 
 		$this->products = new EFWC_Products( $this );
 		$this->cart = new EFWC_Cart( $this );
+		$this->contracts = new EFWC_Contracts( $this );
 	} // END OF PLUGIN CLASSES FUNCTION
 
 	/**
@@ -280,6 +289,8 @@ final class Extend_For_WooCommerce {
 
 		global $wpdb;
 
+
+		wp_schedule_event(strtotime('tomorrow +5 hours'), 'daily', strtolower(__CLASS__ ).'_get_orders');
 
 		// Make sure any rewrite functionality has been loaded.
 		flush_rewrite_rules();
@@ -441,6 +452,7 @@ final class Extend_For_WooCommerce {
 			case 'cart':
             case 'store_id':
             case 'mode':
+			case 'contracts':
 				return $this->$field;
 			default:
 				throw new Exception( 'Invalid ' . __CLASS__ . ' property: ' . $field );

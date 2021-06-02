@@ -431,6 +431,23 @@ class EFWC_Cart {
 		return $name;
 	}
 
+	private function maybe_update_warranty_qty($product_id, $add_qty){
+
+
+		foreach(WC()->cart->get_cart() as $item){
+
+			if(isset($item['extendData']) && intval($item['extendData']['covered_product_id']) === intval($product_id)){
+
+				$key = $item['key'];
+				$qty = intval($item['quantity']);
+				WC()->cart->set_quantity( $key , ($add_qty + $qty) );
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	public function add_to_cart($cart_item_key, $product_id, $quantity, $variation_id, $variation, $cart_item_data){
 
 
@@ -442,14 +459,19 @@ class EFWC_Cart {
 			}
 			$plan['covered_product_id'] = $variation_id?$variation_id: $product_id;
 			$qty = filter_input(INPUT_POST, 'quantity');
-			try{
+
+			if(!$this->maybe_update_warranty_qty($product_id, $qty)){
+				try{
 
 					WC()->cart->add_to_cart($this->warranty_product_id, $qty, 0, 0, ['extendData'=>$plan] );
-				
 
-			}catch(Exception $e){
-				error_log($e->getMessage());
+
+				}catch(Exception $e){
+					error_log($e->getMessage());
+				}
 			}
+
+
 		}
 
 		if(isset($_POST['extendData'])){
@@ -614,6 +636,8 @@ class EFWC_Cart {
 			}
 
 			if(!empty($contract_ids)){
+
+				update_post_meta($order_id, '_has_deferred_contracts', true);
 
 				update_post_meta($order_id, '_extend_contracts', $contract_ids);
 
