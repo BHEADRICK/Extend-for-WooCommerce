@@ -301,14 +301,11 @@ final class Extend_For_WooCommerce {
 	public function _deactivate() {
 
 
-
-	    wp_clear_scheduled_hook('wp_extend_export_product');
 		$uploads = wp_upload_dir();
 
 		$path = $uploads['path'];
 
-		$filename = $path . '/' . 'extend_export.csv';
-		unlink($filename);
+
 		// Add deactivation cleanup functionality here.
 	}
 
