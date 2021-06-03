@@ -287,7 +287,6 @@ final class Extend_For_WooCommerce {
 			return;
 		}
 
-		global $wpdb;
 		
 		// Make sure any rewrite functionality has been loaded.
 		flush_rewrite_rules();
