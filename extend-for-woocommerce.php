@@ -288,10 +288,7 @@ final class Extend_For_WooCommerce {
 		}
 
 		global $wpdb;
-
-
-		wp_schedule_event(strtotime('tomorrow +5 hours'), 'daily', strtolower(__CLASS__ ).'_get_orders');
-
+		
 		// Make sure any rewrite functionality has been loaded.
 		flush_rewrite_rules();
 	}

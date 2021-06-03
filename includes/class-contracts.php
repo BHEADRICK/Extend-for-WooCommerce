@@ -21,6 +21,8 @@ class EFWC_Contracts {
 	 */
 	protected $plugin = null;
 
+	protected $warranty_product_id = null;
+
 	/**
 	 * Constructor.
 	 *
@@ -31,21 +33,194 @@ class EFWC_Contracts {
 	public function __construct( $plugin ) {
 		$this->plugin = $plugin;
 		$this->hooks();
+		$this->warranty_product_id = get_option('wc_extend_product_id');
+	}
+
+	/**
+	 * Initiate our hooks.
+	 *
+	 * @since  0.0.0
+	 */
+	public function hooks() {
+		add_action('woocommerce_order_status_processing', [$this, 'maybe_send_contracts'], 10, 2);
+		add_action(strtolower( get_class($this->plugin)). '_send_contract', [$this, 'send_contract'], 10, 4);
+	}
+	/**
+	 * @param $contract_data
+	 * @param $contract_ids
+	 * @param $item_id
+	 * @param $item
+	 */
+	public function send_contract( $contract_data, $order_id,  $item_id, $item ) {
+
+
+		$contract_ids = [];
+		$res = $this->plugin->remote_request( '/contracts', 'POST', $contract_data );
+
+
+		if ( intval( $res['response_code'] ) === 201 ) {
+
+			if ( ! isset( $contract_ids[ $item_id ] ) ) {
+				$contract_ids[ $item_id ] = [];
+			}
+			$item->add_meta_data( "Extend Status", $res['response_body']->status );
+			$contract_ids[ $item_id ][] = $res['response_body']->id;
+		}else{
+			error_log(print_r($res, true));
+		}
+
+		if(!empty($contract_ids)){
+
+			$current_contracts = get_post_meta($order_id, '_extend_contracts', true);
+
+			if($current_contracts ){
+				$contract_ids =  $current_contracts + $contract_ids;
+			}
+
+			update_post_meta($order_id, '_extend_contracts', $contract_ids);
+
+		}
+	}
+
+	public function maybe_send_contracts($order_id, $order){
+
+
+		$sent = get_post_meta($order_id, '_extend_contracts', true);
+		$deferred = get_post_meta($order_id, '_has_deferred_contracts', true);
+
+
+		if(!$sent && !$deferred){
+
+			$this->send_contracts($order_id, $order);
+		}
+
+	}
+
+
+
+
+	/**
+	 * @param $order_id integer
+	 * @param $order WC_Order
+	 */
+	private function send_contracts( $order_id, $order) {
+
+		$items     = $order->get_items();
+		$contracts = [];
+		$prices    = [];
+		$covered   = [];
+//		$leads = [];
+
+		foreach ( $items as $item ) {
+			if ( intval( $item->get_product_id() ) === intval( $this->warranty_product_id ) ) {
+				$qty = $item->get_quantity();
+				for ( $i = 0; $i < $qty; $i ++ ) {
+					$contracts[] = $item;
+				}
+
+			} else {
+				$prod_id            = $item->get_variation_id() ? $item->get_variation_id() : $item->get_product_id();
+				$prices[ $prod_id ] = $item->get_subtotal() / $item->get_quantity();
+			}
+		}
+
+		if ( ! empty( $contracts ) ) {
+
+			foreach ( $contracts as $item ) {
+				$item_id = $item->get_id();
+				$data    = $item->get_meta( '_extend_data' );
+				if ( $data ) {
+
+					$covered_id = $data['covered_product_id'];
+					$covered[]  = $covered_id;
+					$delay = $this->get_product_shipping_estimate(wc_get_product($covered_id));
+					$date = $order->get_date_paid();
+					$projected_ship_date_obj =  date_add($date, date_interval_create_from_date_string("$delay days"));
+
+					$projected_ship_date = $projected_ship_date_obj->getTimestamp();
+
+
+					$contract_data = [
+						'transactionId'    => $order_id,
+						'poNumber'         => $order->get_order_number(),
+						'transactionTotal' => [
+							'currencyCode' => 'USD',
+							'amount'       => $order->get_total() * 100
+						],
+						'customer'         => [
+							'name'            => $order->get_billing_first_name() . ' ' . $order->get_billing_last_name(),
+							'email'           => $order->get_billing_email(),
+							'phone'           => $order->get_billing_phone(),
+							'billingAddress'  => [
+								'address1'     => $order->get_billing_address_1(),
+								'address2'     => $order->get_billing_address_2(),
+								'city'         => $order->get_billing_city(),
+								'countryCode'  => $order->get_billing_country(),
+								'postalCode'   => $order->get_billing_postcode(),
+								'provinceCode' => $order->get_billing_state()
+							],
+							'shippingAddress' => [
+								'address1'     => $order->get_shipping_address_1(),
+								'address2'     => $order->get_shipping_address_2(),
+								'city'         => $order->get_shipping_city(),
+								'countryCode'  => $order->get_shipping_country(),
+								'postalCode'   => $order->get_shipping_postcode(),
+								'provinceCode' => $order->get_shipping_state()
+							],
+						],
+						'product'          => [
+							'referenceId'   => $covered_id,
+							'purchasePrice' => [
+								'currencyCode' => 'USD',
+								'amount'       => $prices[ $covered_id ] * 100
+							]
+						],
+						'currency'         => 'USD',
+						'source'           => [
+							'agentId'      => '',
+							'channel'      => 'web',
+							'integratorId' => 'netsuite',
+							'locationId'   => $this->plugin->store_id,
+							'platform'     => 'woocommerce'
+						],
+						'transactionDate'  => $projected_ship_date,
+						'plan'             => [
+							'purchasePrice' => [
+								'currencyCode' => 'USD',
+								'amount'       => $data['price']
+							],
+							'planId'        => $data['planId']
+						]
+
+					];
+
+
+
+					wp_schedule_single_event($projected_ship_date, strtolower( get_class($this->plugin)). '_send_contract', [$contract_data, $order_id, $item_id, $item]);
+
+					
+				}
+
+				
+				update_post_meta($order_id, '_has_deferred_contracts', true);
+
+			}
+
+
+		}
 	}
 
 	private function get_product_shipping_estimate($product){
 
-		$min = 0; $max = 0;
+		 $max = 5;
 		if($product->get_parent_id()>0){
 			//variation
 			if(get_post_meta($product->get_id(), 'ship_time_min', true)){
-				$min = get_post_meta($product->get_id(), 'ship_time_min', true);
 				$max = get_post_meta($product->get_id(), 'ship_time_max', true);
 
 
 				// use postmeta
 			}elseif( get_post_meta($product->get_parent_id(), 'ship_time_min', true)){
-				$min = get_post_meta($product->get_parent_id(), 'ship_time_min', true);
 				$max = get_post_meta($product->get_parent_id(), 'ship_time_max', true);
 					//use parent post meta
 				}else{
@@ -53,7 +228,6 @@ class EFWC_Contracts {
 				$brands =   wp_get_post_terms($product->get_parent_id(), 'pa_product-brand');
 
 				if($brands && !is_wp_error($brands)){
-					$min = get_term_meta($brands[0]->term_id, 'ship_time_min', true);
 					$max = get_term_meta($brands[0]->term_id, 'ship_time_max', true);
 				}
 			}
@@ -63,115 +237,23 @@ class EFWC_Contracts {
 			//product
 			if(get_post_meta($product->get_id(), 'ship_time_min', true)) {
 				// use postmeta
-				$min = get_post_meta($product->get_id(), 'ship_time_min', true);
 				$max = get_post_meta($product->get_id(), 'ship_time_max', true);
 			}else{
 				// use brand details
 				$brands =   wp_get_post_terms($product->get_id(), 'pa_product-brand');
 
 				if($brands && !is_wp_error($brands)){
-					$min = get_term_meta($brands[0]->term_id, 'ship_time_min', true);
 					$max = get_term_meta($brands[0]->term_id, 'ship_time_max', true);
 				}
 			}
 		}
 
-		return ceil(($min+$max)/2);
+
+		return $max;
 
 	}
 
-	private  function add_business_days($datetime, $duedays)
-	{
-		$i = 1;
-		while ($i <= $duedays)
-		{
-			$next_day = date('N', strtotime('+1 day', $datetime));
-			if ($next_day == 6 || $next_day == 7)
-			{
-				$datetime = strtotime('+1 day', $datetime);
-				continue;
-			}
-			$datetime = strtotime('+1 day', $datetime);
-			$i++;
-		}
-
-		return $datetime;
-	}
-
-	public function find_contracts(){
-		global $wpdb;
 
 
 
-		$order_ids = $wpdb->get_col("select post_id from $wpdb->postmeta where meta_key = '_has_deferred_contracts'");
-
-		$dcontracts = [];
-
-
-		foreach($order_ids as $order_id){
-			$order = wc_get_order($order_id);
-			$contracts = get_post_meta($order_id, '_extend_contracts', true);
-
-			$date = $order->get_date_paid();
-
-			foreach($contracts as $item_id=>$contract_ids){
-				$item = $order->get_item($item_id);
-
-
-				$meta = $item->get_meta('_extend_data', true);
-
-				if($meta && isset($meta['covered_product_id'])){
-
-					$product = wc_get_product($meta['covered_product_id']);
-					$date_add = $this->get_product_shipping_estimate($product);
-
-					$new_date = $this->add_business_days($date->getTimestamp(), $date_add);
-
-					$new_date_string = date('Y-M-d', $new_date);
-
-					foreach($contract_ids as $contract_id){
-
-
-						if(!empty($new_date_string)){
-							$dcontracts[$contract_id] = $new_date_string;
-						}
-					}
-				}
-			}
-			delete_post_meta($order_id, '_has_deferred_contracts');
-		}
-		$timestamp = time();
-		$filename = "contracts-$timestamp.csv" ;
-
-		$upload_dir = wp_upload_dir();
-
-		$filepath = $upload_dir['path'] . '/' . $filename;
-
-
-		$fp = fopen($filepath, 'w');
-
-		fputcsv($fp, ['contract', 'date']);
-
-		foreach($dcontracts as $contract=>$date){
-
-			fputcsv($fp, [$contract, $date]);
-		}
-		fclose($fp);
-
-		$attachments = [$filepath];
-		$headers = 'From: Extend Deferred Contracts <noreply@poolwarehouse.com>' . "\r\n";
-		wp_mail('support@extend.com', "Deferred Contracts", "see attached", $headers, $attachments);
-		unlink($filepath);
-	}
-
-	/**
-	 * Initiate our hooks.
-	 *
-	 * @since  0.0.0
-	 */
-	public function hooks() {
-
-		add_action(strtolower(get_class($this->plugin)). '_get_orders', [$this, 'find_contracts']);
-
-	}
 }

@@ -106,7 +106,7 @@ class EFWC_Products {
 			wp_enqueue_script('extend_script');
 			wp_enqueue_script('extend_warranty_script');
 			wp_localize_script('extend_warranty_script', 'WCExtend', compact('store_id', 'id', 'type', 'ids', 'environment'));
-			echo "<div id=\"extend-offer\" style='display:none'></div>";
+			echo "<div id=\"extend-offer\" ></div>";
 
 
 		}
