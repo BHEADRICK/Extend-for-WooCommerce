@@ -212,7 +212,7 @@ class EFWC_Contracts {
 
 	private function get_product_shipping_estimate($product){
 
-		 $max = 5;
+		 $max = 14;
 		if($product->get_parent_id()>0){
 			//variation
 			if(get_post_meta($product->get_id(), 'ship_time_min', true)){
