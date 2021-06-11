@@ -91,8 +91,8 @@ class EFWC_Products {
 			return;
 		}
 		$id = $product->get_id();
-
-		$store_id = get_option('wc_extend_store_id');
+		$sandbox = (get_option('wc_extend_sandbox')==='yes');
+		$store_id = $sandbox?get_option('wc_extend_sandbox_store_id'): get_option('wc_extend_store_id');
 		$type = $product->get_type();
 		
 		$environment = $this->plugin->mode === 'sandbox'?'demo':'live';
@@ -171,6 +171,24 @@ class EFWC_Products {
 				'default'     => '',
 				'placeholder' => __( '', 'extend-for-woocommerce' ),
 				'id'          => 'wc_extend_api_key',
+				'desc_tip'    => true,
+			),
+			array(
+				'name' => __( 'Extend Sandbox Store Id', 'extend-for-woocommerce' ),
+				'type'        => 'text',
+				'desc'        => __( '', 'extend-for-woocommerce' ),
+				'default'     => '',
+				'placeholder' => __( '', 'extend-for-woocommerce' ),
+				'id'          => 'wc_extend_sandbox_store_id',
+				'desc_tip'    => true,
+			),
+			array(
+				'name' => __( 'Extend Sandbox API Key', 'extend-for-woocommerce' ),
+				'type'        => 'text',
+				'desc'        => __( '', 'extend-for-woocommerce' ),
+				'default'     => '',
+				'placeholder' => __( '', 'extend-for-woocommerce' ),
+				'id'          => 'wc_extend_sandbox_api_key',
 				'desc_tip'    => true,
 			),
 			array(

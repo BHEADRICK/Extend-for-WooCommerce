@@ -175,11 +175,11 @@ final class Extend_For_WooCommerce {
 			$this->mode = 'live';
 			$this->service_url = 'https://api.helloextend.com';
 		}
-		$store_id = get_option('wc_extend_store_id');
+		$store_id = $mode==='yes'?get_option('wc_extend_sandbox_store_id'): get_option('wc_extend_store_id');
 		if($store_id){
 			$this->service_url .= '/stores/' . $store_id ;
 		}
-		$this->api_key = get_option('wc_extend_api_key');
+		$this->api_key = $mode==='yes'? get_option('wc_extend_sandbox_api_key') : get_option('wc_extend_api_key');
 
 		$this->store_id = $store_id;
 	}
