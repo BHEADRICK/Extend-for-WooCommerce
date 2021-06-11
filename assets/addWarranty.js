@@ -43,8 +43,9 @@ jQuery(document).ready(function(){
     jQuery('form.cart').append('<input type="hidden" name="planData"  id="planData"/>');
 
 
-    jQuery('button.single_add_to_cart_button').on('click', function extendHandler(e) {
+    jQuery('button.single_add_to_cart_button:not([name="add_to_quote"])').on('click', function extendHandler(e) {
         e.preventDefault()
+
 
         // /** get the component instance rendered previously */
         const component = Extend.buttons.instance('#extend-offer');
@@ -56,8 +57,8 @@ jQuery(document).ready(function(){
         if (plan) {
 
             jQuery('#planData').val(JSON.stringify(plan));
-            jQuery('button.single_add_to_cart_button').off('click', extendHandler);
-            jQuery('button.single_add_to_cart_button').trigger('click');
+            jQuery(e.target).off('click', extendHandler);
+            jQuery(e.target).trigger('click');
 
         } else{
             if(jQuery('#planData').val()===''){
@@ -67,11 +68,11 @@ jQuery(document).ready(function(){
                         if (plan && product) {
                             jQuery('#planData').val(JSON.stringify(plan));
 
-                            jQuery('button.single_add_to_cart_button').off('click', extendHandler);
-                            jQuery('button.single_add_to_cart_button').trigger('click');
+                            jQuery(e.target).off('click', extendHandler);
+                            jQuery(e.target).trigger('click');
                         } else {
-                            jQuery('button.single_add_to_cart_button').off('click', extendHandler);
-                            jQuery('button.single_add_to_cart_button').trigger('click');
+                            jQuery(e.target).off('click', extendHandler);
+                            jQuery(e.target).trigger('click');
 
 
                         }
