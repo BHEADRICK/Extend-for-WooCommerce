@@ -353,7 +353,7 @@ class EFWC_Products {
 		'category'=>$category,
 		'description'=>substr($description, 0, 2000),
 		'enabled'=>$this->isEnabled($product),
-			'price'=>['currencyCode'=>'USD', 'amount'=> $product->get_price()],
+			'price'=>['currencyCode'=>'USD', 'amount'=> $product->get_price() * 100],
 		'title'=>$title,
 			'imageUrl'=>$image,
 			'identifiers'=>[
