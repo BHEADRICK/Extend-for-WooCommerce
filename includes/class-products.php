@@ -293,6 +293,7 @@ class EFWC_Products {
 			if($res['response_code']=== 404){
 				$res = $this->plugin->remote_request('/products', 'POST', $data, ['upsert'=>true]);
 			}
+			update_post_meta($id, '_extend_added', true);
 		}else{
 			$res = $this->plugin->remote_request('/products', 'POST', $data, ['upsert'=>true]);
 
@@ -325,7 +326,9 @@ class EFWC_Products {
 			$id = $product->get_id();
 		}
 
-
+		if(!$product){
+			return;
+		}
 
 
 
