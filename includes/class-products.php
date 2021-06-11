@@ -91,8 +91,8 @@ class EFWC_Products {
 			return;
 		}
 		$id = $product->get_id();
-		$sandbox = (get_option('wc_extend_sandbox')==='yes');
-		$store_id = $sandbox?get_option('wc_extend_sandbox_store_id'): get_option('wc_extend_store_id');
+
+		$store_id = $this->plugin->store_id;
 		$type = $product->get_type();
 		
 		$environment = $this->plugin->mode === 'sandbox'?'demo':'live';

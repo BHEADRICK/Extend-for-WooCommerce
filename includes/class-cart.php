@@ -133,7 +133,7 @@ class EFWC_Cart {
 			}
 		}
 
-			$store_id = get_option('wc_extend_store_id');
+			$store_id = $this->plugin->store_id;
 
 
 		$warranty_prod_id = $this->warranty_product_id;
