@@ -55,12 +55,26 @@ class EFWC_Contracts {
 
 		$deferred_data = get_post_meta($order_id, '_has_deferred_contracts', true);
 
+		if(!$deferred_data || empty($deferred_data)){
+			return;
+		}
 		if(!is_bool($deferred_data)){
 
 			if(!isset($deferred_data[$item_id])){
 				return;
 			}
 		}
+
+		$order = wc_get_order($order_id);
+
+		$status = $order->get_status();
+
+		if(in_array($status, ['cancelled', 'refunded', 'failed'])){
+
+
+			return;
+		}
+		
 
 		$contract_ids = [];
 		$res = $this->plugin->remote_request( '/contracts', 'POST', $contract_data );
@@ -88,6 +102,7 @@ class EFWC_Contracts {
 			update_post_meta($order_id, '_extend_contracts', $contract_ids);
 
 		}
+		delete_post_meta($order_id, '_has_deferred_contracts');
 	}
 
 	public function maybe_send_contracts($order_id, $order){
