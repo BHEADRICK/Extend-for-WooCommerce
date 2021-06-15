@@ -248,7 +248,7 @@ class EFWC_Cart {
 
 
 		$contracts = get_post_meta($order_id, '_extend_contracts', true);
-
+		$deferred = get_post_meta($order_id, '_has_deferred_contracts', true);
 		if($contracts){
 
 			$refund_details = [];
@@ -262,6 +262,16 @@ class EFWC_Cart {
 
 
 			update_post_meta($order_id, '_extend_refund_data', $refund_details);
+		}elseif($deferred){
+			if(!is_bool($deferred)){
+
+
+
+				update_post_meta($order_id, '_has_deferred_contracts', []);
+
+
+			}
+
 		}
 
 
@@ -277,7 +287,7 @@ class EFWC_Cart {
 
 
 		$order_id = $refund->get_parent_id();
-
+		$deferred = get_post_meta($order_id, '_has_deferred_contracts', true);
 		$extend_data = get_post_meta($order_id, '_extend_contracts', true);
 
 		if($extend_data){
@@ -295,6 +305,24 @@ class EFWC_Cart {
 				}
 			}
 			update_post_meta($order_id, '_extend_refund_data', $refund_details);
+		}elseif($deferred){
+			foreach($args['line_items'] as $item_id=> $item) {
+				if ( $item['refund_total'] > 0 && isset( $extend_data[ $item_id ] ) ) {
+					if(is_array($deferred) && isset($deferred[$item_id])) {
+
+						unset($deferred[$item_id]);
+					}
+
+				}
+			}
+
+			update_post_meta($order_id, '_has_deferred_contracts', $deferred);
+
+
+
+			}
+
+
 		}
 
 

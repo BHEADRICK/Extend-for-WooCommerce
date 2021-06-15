@@ -53,6 +53,14 @@ class EFWC_Contracts {
 	 */
 	public function send_contract( $contract_data, $order_id,  $item_id, $item ) {
 
+		$deferred_data = get_post_meta($order_id, '_has_deferred_contracts', true);
+
+		if(!is_bool($deferred_data)){
+
+			if(!isset($deferred_data[$item_id])){
+				return;
+			}
+		}
 
 		$contract_ids = [];
 		$res = $this->plugin->remote_request( '/contracts', 'POST', $contract_data );
@@ -109,6 +117,7 @@ class EFWC_Contracts {
 		$contracts = [];
 		$prices    = [];
 		$covered   = [];
+		$deferred_data = [];
 //		$leads = [];
 
 		foreach ( $items as $item ) {
@@ -201,12 +210,12 @@ class EFWC_Contracts {
 					
 				}
 
-				
-				update_post_meta($order_id, '_has_deferred_contracts', true);
+				$deferred_data[$item_id] = $projected_ship_date;
+
 
 			}
 
-
+			update_post_meta($order_id, '_has_deferred_contracts', $deferred_data);
 		}
 	}
 
