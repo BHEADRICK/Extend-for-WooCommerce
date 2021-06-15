@@ -207,11 +207,9 @@ class EFWC_Contracts {
 
 					wp_schedule_single_event($projected_ship_date, strtolower( get_class($this->plugin)). '_send_contract', [$contract_data, $order_id, $item_id, $item]);
 
-					
+					$deferred_data[$item_id] = $projected_ship_date;
+
 				}
-
-				$deferred_data[$item_id] = $projected_ship_date;
-
 
 			}
 
