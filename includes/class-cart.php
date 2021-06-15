@@ -326,10 +326,6 @@ class EFWC_Cart {
 		}
 
 
-
-
-	}
-
 	public function unique_cart_items($cart_item_data, $product_id){
 
 	if($product_id === intval($this->warranty_product_id)){
