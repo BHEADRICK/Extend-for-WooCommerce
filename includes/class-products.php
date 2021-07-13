@@ -63,6 +63,10 @@ class EFWC_Products {
 
 	public function save_variations($product_id){
 
+		if(!is_numeric($product_id)){
+			return
+		}
+
 		$product = wc_get_product($product_id);
 		$variations = $product->get_available_variations();
 
@@ -282,6 +286,10 @@ class EFWC_Products {
 	}
 
 	public function updateProduct($id){
+
+		if(!is_numeric($id)){
+			return;
+		}
 
 		$data = $this->getProductData($id);
 
