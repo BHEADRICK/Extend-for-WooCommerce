@@ -64,7 +64,7 @@ class EFWC_Products {
 	public function save_variations($product_id){
 
 		if(!is_numeric($product_id)){
-			return
+			return;
 		}
 
 		$product = wc_get_product($product_id);
@@ -279,7 +279,9 @@ class EFWC_Products {
 	}
 
 	public function addProduct($id){
-
+		if(!is_numeric($id)){
+			return;
+		}
 		$data = $this->getProductData($id);
 		$res = $this->plugin->remote_request('/products', 'POST', $data, ['upsert'=>false]);
 		update_post_meta($id, '_extend_added', true);
