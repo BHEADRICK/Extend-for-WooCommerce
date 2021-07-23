@@ -455,6 +455,9 @@ class EFWC_Cart {
 	public function add_to_cart($cart_item_key, $product_id, $quantity, $variation_id, $variation, $cart_item_data){
 
 
+
+
+
 		if(isset($_POST['planData'])){
 			$plan = json_decode(str_replace('\\', '', $_POST['planData']), true);
 			unset($_POST['planData']);
@@ -479,16 +482,21 @@ class EFWC_Cart {
 		}
 
 		if(isset($_POST['extendData'])){
-
+			try{
 			$plan = $_POST['extendData'];
 			WC()->cart->cart_contents[$cart_item_key]['extendData'] = $plan;
 			$price = round($plan['price']/100, 2);
 
 			WC()->cart->cart_contents[$cart_item_key]['data']->set_price($price);
+			}catch(Exception $e){
+				error_log($e->getMessage());
+				error_log($e->getTraceAsString());
+			}
 
 		}
 
-	
+
+
 
 	}
 
