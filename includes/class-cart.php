@@ -488,14 +488,7 @@ class EFWC_Cart {
 
 		}
 
-		if(isset($cart_item_data['extendData'])){
-
-
-			$price = round($cart_item_data['extendData']['price']/100, 2);
-
-			WC()->cart->cart_contents[$cart_item_key]['data']->set_price($price);
-
-		}
+	
 
 	}
 
