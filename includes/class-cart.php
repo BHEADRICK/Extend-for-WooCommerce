@@ -56,7 +56,7 @@ class EFWC_Cart {
 		add_action('woocommerce_order_status_refunded', [$this, 'process_full_refund']);
 		add_filter('woocommerce_add_cart_item_data', [$this, 'unique_cart_items'], 10, 2);
 		add_action('woocommerce_create_refund', [$this, 'process_partial_refund'], 10, 2);
-//		add_action('woocommerce_check_cart_items', [$this, 'validate_cart']);
+		add_action('woocommerce_check_cart_items', [$this, 'validate_cart']);
 
 		add_action('woocommerce_after_cart_item_name', [$this, 'after_cart_item_name'], 10, 2);
 		add_action('woocommerce_after_cart', [$this, 'cart_offers']);
@@ -134,14 +134,14 @@ class EFWC_Cart {
 		}
 
 			$store_id = $this->plugin->store_id;
-
+		$enabled = get_option('wc_extend_enabled')==='yes';
 
 		$warranty_prod_id = $this->warranty_product_id;
 
 			$environment = $this->plugin->mode === 'sandbox'?'demo':'live';
 
 			$ids = array_unique($offers);
-			if($store_id){
+			if($store_id && $enabled){
 				wp_enqueue_script('extend_script');
 				wp_enqueue_script('extend_cart_script');
 				wp_localize_script('extend_cart_script', 'WCCartExtend', compact('store_id',  'ids', 'environment', 'warranty_prod_id'));

@@ -13,7 +13,7 @@ jQuery(document).ready(function(){
         referenceIds: product_ids
     });
 
-    if(product_type ==='simple'){
+    if(product_type ==='simple' || product_type ==='bundle'){
         Extend.buttons.render('#extend-offer', {
             referenceId: product_id,
         })
