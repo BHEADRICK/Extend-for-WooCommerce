@@ -98,6 +98,7 @@ class EFWC_Products {
 
 		$store_id = $this->plugin->store_id;
 		$type = $product->get_type();
+		$enabled = get_option('wc_extend_enabled')==='yes';
 		
 		$environment = $this->plugin->mode === 'sandbox'?'demo':'live';
 
@@ -106,7 +107,7 @@ class EFWC_Products {
 		}else{
 			$ids = [$id];
 		}
-		if($store_id){
+		if($store_id && $enabled){
 			wp_enqueue_script('extend_script');
 			wp_enqueue_script('extend_warranty_script');
 			wp_localize_script('extend_warranty_script', 'WCExtend', compact('store_id', 'id', 'type', 'ids', 'environment'));
@@ -157,6 +158,12 @@ class EFWC_Products {
 				'type'    => 'checkbox',
 				'id'      => 'wc_extend_sandbox',
 				'default' => 'no',
+			),
+	array(
+				'title'   => __( 'Offer Extended Warranties', 'extend-for-woocommerce' ),
+				'type'    => 'checkbox',
+				'id'      => 'wc_extend_enabled',
+				'default' => 'yes',
 			),
 
 			array(
@@ -268,6 +275,11 @@ class EFWC_Products {
 	}
 
 	public function get_variation_title($variation){
+
+		if(get_class($variation) === 'WC_Product_Simple'){
+			return $variation->get_title();
+		}
+
 		$attributes = $variation->get_variation_attributes();
 		$atts = [];
 		foreach($attributes as $key=>$val){
@@ -292,6 +304,8 @@ class EFWC_Products {
 		if(!is_numeric($id)){
 			return;
 		}
+	try{
+
 
 		$data = $this->getProductData($id);
 
@@ -316,7 +330,10 @@ class EFWC_Products {
 
 
 		}
-
+	}catch(Exception $e){
+		error_log("error updating product for Extend");
+		error_log($e->getMessage());
+	}
 
 	}
 
