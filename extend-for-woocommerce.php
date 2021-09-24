@@ -121,6 +121,9 @@ final class Extend_For_WooCommerce {
 	 */
 	protected $products;
 
+	protected $table_name = 'extend_contracts';
+	protected $db_version = '1.0';
+
 
 	/**
 	 * Instance of EFWC_Cart
@@ -296,10 +299,39 @@ final class Extend_For_WooCommerce {
 			return;
 		}
 
-		
+		$this->add_tables();
 		// Make sure any rewrite functionality has been loaded.
 		flush_rewrite_rules();
 	}
+
+	private function add_tables() {
+		global $wpdb;
+
+		$charset_collate = $wpdb->get_charset_collate();
+
+		$sql = "CREATE TABLE {$wpdb->prefix}$this->table_name (
+		id mediumint(9) NOT NULL AUTO_INCREMENT,
+		date_created datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
+		date_scheduled datetime DEFAULT '0000-00-00 00:00:00' not NULL,
+		contract_number varchar(100)  null,
+		order_id int not null,
+		order_number int not null,
+		product_id int not null,
+		product_price decimal not null,
+		product_name varchar(100),
+		warranty_price decimal null,
+		warranty_plan_id varchar(50) null,
+		warranty_title varchar(50) null,
+		warranty_term int not null,
+		PRIMARY KEY  (id)
+	) $charset_collate;";
+
+		require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
+		dbDelta( $sql );
+
+		add_option( 'extend_db_version', $this->db_version );
+	}
+
 
 	/**
 	 * Deactivate the plugin.
@@ -456,6 +488,7 @@ final class Extend_For_WooCommerce {
             case 'mode':
 			case 'contracts':
 			case 'batch':
+			case 'table_name':
 				return $this->$field;
 			default:
 				throw new Exception( 'Invalid ' . __CLASS__ . ' property: ' . $field );
