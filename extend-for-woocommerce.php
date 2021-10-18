@@ -155,6 +155,14 @@ final class Extend_For_WooCommerce {
 	protected $batch;
 
 	/**
+	 * Instance of EWC_Frontend
+	 *
+	 * @since0.0.0
+	 * @var EWC_Frontend
+	 */
+	protected $frontend;
+
+	/**
 	 * Creates or returns an instance of this class.
 	 *
 	 * @since   0.0.0
@@ -206,6 +214,7 @@ final class Extend_For_WooCommerce {
 		$this->cart = new EFWC_Cart( $this );
 		$this->contracts = new EFWC_Contracts( $this );
 		$this->batch = new EFWC_Batch( $this );
+		$this->frontend = new EFWC_Frontend( $this );
 	} // END OF PLUGIN CLASSES FUNCTION
 
 	/**
@@ -489,6 +498,7 @@ final class Extend_For_WooCommerce {
 			case 'contracts':
 			case 'batch':
 			case 'table_name':
+			case 'frontend':
 				return $this->$field;
 			default:
 				throw new Exception( 'Invalid ' . __CLASS__ . ' property: ' . $field );

@@ -67,36 +67,26 @@ class EFWC_Cart {
 	}
 
 	public function extend_metabox(){
-		global $post;
+		global $post, $wpdb;
 
-		$contracts = get_post_meta($post->ID, '_extend_contracts', true);
-		$deferred = get_post_meta($post->ID, '_has_deferred_contracts', true);
+		$contracts = $wpdb->get_results("select * from $wpdb->prefix{$this->plugin->table_name} where order_id = {$post->ID}");
+
 		if($contracts){
-			$refunds = get_post_meta($post->ID, '_extend_refund_data', true);
+
 			echo " <ul>";
 
-			foreach($contracts as $cart_item_id=>$line){
+			foreach($contracts as $contract){
 
-				foreach($line as $contract_id){
-					echo "<li>Contract id: $contract_id";
-
-					if(isset($refunds[$cart_item_id])){
-						echo "<br>Status: Refunded";
-					}else{
-						echo "<br>Status: Active";
+					if(!empty($contract->contract_number)) {
+						echo "<li>Contract id: $contract->contract_number";
+					}else {
+						echo "<li>Extend Contract(s) prepared, but not yet sent</li>";
 					}
 
-					echo "</li>";
+
 				}
 
 			}
-
-			echo "</ul>";
-
-		}elseif($deferred){
-			echo '<p>Extend Contract(s) prepared, but not yet sent</p>';
-		}
-
 		else{
 			echo '<p>No Extend Contracts found</p>';
 		}
@@ -246,32 +236,28 @@ class EFWC_Cart {
 	public function process_full_refund($order_id){
 
 
+		global  $wpdb;
 
-		$contracts = get_post_meta($order_id, '_extend_contracts', true);
-		$deferred = get_post_meta($order_id, '_has_deferred_contracts', true);
+		$contracts = $wpdb->get_results("select * from $wpdb->prefix{$this->plugin->table_name}  where order_id = {$order_id}");
+	
 		if($contracts){
 
 			$refund_details = [];
-			foreach($contracts as $item_id=>$contract_id){
+			foreach($contracts as $contract){
 
-				$res = $this->plugin->remote_request('/contracts/' . $contract_id . '/refund', 'POST', [], ['commit'=>true]);
-				$refund_details[$item_id]= $this->capture_refund_data($res);
+				if($contract->contract_number !== ''){
+					$contract_id = $contract->contract_number;
 
+					$res = $this->plugin->remote_request('/contracts/' . $contract_id . '/refund', 'POST', [], ['commit'=>true]);
+					$refund_details[$contract_id]= $this->capture_refund_data($res);
+				}else{
+					$wpdb->update("$wpdb->prefix{$this->plugin->table_name}",['contract_number'=>'refunded'], ['id'=>$contract->id]);
+				}
 
 			}
 
 
 			update_post_meta($order_id, '_extend_refund_data', $refund_details);
-		}elseif($deferred){
-			if(!is_bool($deferred)){
-
-
-
-				update_post_meta($order_id, '_has_deferred_contracts', []);
-
-
-			}
-
 		}
 
 
@@ -282,46 +268,36 @@ class EFWC_Cart {
 	 * @param $args array
 	 */
 	public function process_partial_refund($refund, $args){
-
+		global $wpdb;
 
 
 
 		$order_id = $refund->get_parent_id();
-		$deferred = get_post_meta($order_id, '_has_deferred_contracts', true);
-		$extend_data = get_post_meta($order_id, '_extend_contracts', true);
-
-		if($extend_data){
-
+		$contracts = $wpdb->get_results("select * from $wpdb->prefix{$this->plugin->table_name} where order_id = $order_id");
+		if($contracts){
 			$refund_details = [];
-			foreach($args['line_items'] as $item_id=> $item){
-				if( $item['refund_total']>0 && isset($extend_data[$item_id])){
+			foreach($contracts as $contract){
+				if(!empty($contract->contract_number)){
 
-					$contract_id = $extend_data[$item_id];
+					foreach($args['line_items'] as $item_id=> $item){
+						if( $item['refund_total']>0 && isset($extend_data[$item_id])){
 
-					$res = $this->plugin->remote_request('/contracts/' . $contract_id . '/refund', 'POST', [], ['commit'=>true]);
+							$contract_id = $contract->contract_number;
 
-				$refund_details[$item_id]=  $this->capture_refund_data($res);
+							$res = $this->plugin->remote_request('/contracts/' . $contract_id . '/refund', 'POST', [], ['commit'=>true]);
 
+							$refund_details[$contract_id]=  $this->capture_refund_data($res);
+
+						}
+					}
+					update_post_meta($order_id, '_extend_refund_data', $refund_details);
+				}else{
+					$wpdb->update("$wpdb->prefix{$this->plugin->table_name}",['contract_number'=>'refunded'], ['id'=>$contract->id]);
 				}
 			}
 			update_post_meta($order_id, '_extend_refund_data', $refund_details);
-		}elseif($deferred){
-			foreach($args['line_items'] as $item_id=> $item) {
-				if ( $item['refund_total'] > 0 && isset( $extend_data[ $item_id ] ) ) {
-					if(is_array($deferred) && isset($deferred[$item_id])) {
 
-						unset($deferred[$item_id]);
-					}
-
-				}
-			}
-
-			update_post_meta($order_id, '_has_deferred_contracts', $deferred);
-
-
-
-			}
-
+		}
 
 		}
 
@@ -340,8 +316,11 @@ class EFWC_Cart {
 	}
 
 
-
-
+	/**
+	 * @param $item WC_Order_Item
+	 * @param $cart_item_key string
+	 * @param $cart_item array
+	 */
 	public function order_item_meta($item, $cart_item_key, $cart_item ){
 		if(isset($cart_item['extendData'])){
 			$item->add_meta_data('_extend_data', $cart_item['extendData']);
@@ -360,6 +339,8 @@ class EFWC_Cart {
 			$item->add_meta_data('Warranty Term', $term . ' Months');
 			$item->add_meta_data('Plan Id', $sku);
 			$item->add_meta_data('Covered Product', $covered_title);
+
+			update_post_meta($item->get_order_id(), '_has_extend', true);
 
 		}
 

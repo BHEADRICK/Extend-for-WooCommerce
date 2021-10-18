@@ -43,7 +43,21 @@ class EFWC_Contracts {
 	 */
 	public function hooks() {
 		add_action('woocommerce_order_status_processing', [$this, 'maybe_send_contracts'], 10, 2);
-		add_action(strtolower( get_class($this->plugin)). '_send_contract', [$this, 'send_contract'], 10, 4);
+
+		add_action(strtolower( get_class($this->plugin)). '_send_contracts', [$this, 'get_contracts']);
+	}
+
+	public function get_contracts(){
+
+		global $wpdb;
+
+		$contracts = $wpdb->get_results("select id, order_id, product_id, warranty_price, product_price, warranty_plan_id from $wpdb->prefix{$this->plugin->table_name} where date_scheduled < curdate() and contract_number = ''");
+
+
+		foreach($contracts as $contract){
+			$this->send_contract($contract->order_id, $contract->product_id, $contract->product_price, $contract->warranty_price, $contract->warranty_plan_id, $contract->id);
+		}
+
 	}
 	/**
 	 * @param $contract_data
@@ -51,70 +65,65 @@ class EFWC_Contracts {
 	 * @param $item_id
 	 * @param $item
 	 */
-	public function send_contract( $contract_data, $order_id,  $item_id, $item ) {
+	public function send_contract(  $order_id,  $covered_id, $product_price, $plan_price, $plan_id, $contract_id ) {
 
-		$deferred_data = get_post_meta($order_id, '_has_deferred_contracts', true);
+		global $wpdb;
 
-		if(!$deferred_data || empty($deferred_data)){
-			return;
-		}
-		if(!is_bool($deferred_data)){
 
-			if(!isset($deferred_data[$item_id])){
-				return;
-			}
-		}
+		error_log('attempting to send contract for order id: ' . $order_id);
 
 		$order = wc_get_order($order_id);
+
+		if(!$order){
+			error_log("not an order: $order_id");
+			return;
+		}
 
 		$status = $order->get_status();
 
 		if(in_array($status, ['cancelled', 'refunded', 'failed'])){
 
+			error_log("unable to send. order status is $status");
+
+			$wpdb->update("$wpdb->prefix{$this->plugin->table_name}", ['contract_number'=> "$status order"], ['order_id'=> $order_id] );
 
 			return;
 		}
-		
+		if(!$order->get_date_paid()){
+			error_log("order not paid: $order_id");
+		}
+		$trans_date = $order->get_date_paid()->getTimestamp();
+		$contract_data = $this->get_contract_data($order, $covered_id, $product_price, $plan_price, $plan_id, $trans_date );
 
-		$contract_ids = [];
+
 		$res = $this->plugin->remote_request( '/contracts', 'POST', $contract_data );
+
 
 
 		if ( intval( $res['response_code'] ) === 201 ) {
 
-			if ( ! isset( $contract_ids[ $item_id ] ) ) {
-				$contract_ids[ $item_id ] = [];
-			}
-			$item->add_meta_data( "Extend Status", $res['response_body']->status );
-			$contract_ids[ $item_id ][] = $res['response_body']->id;
+
+
+			$contract_number = $res['response_body']->id;
+
+			$wpdb->update($wpdb->prefix . $this->plugin->table_name , compact('contract_number'), ['id'=>$contract_id]);
 		}else{
 			error_log(print_r($res, true));
 		}
 
-		if(!empty($contract_ids)){
-
-			$current_contracts = get_post_meta($order_id, '_extend_contracts', true);
-
-			if($current_contracts ){
-				$contract_ids =  $current_contracts + $contract_ids;
-			}
-
-			update_post_meta($order_id, '_extend_contracts', $contract_ids);
-
-		}
-		delete_post_meta($order_id, '_has_deferred_contracts');
 	}
 
 	public function maybe_send_contracts($order_id, $order){
 
 
-		$sent = get_post_meta($order_id, '_extend_contracts', true);
-		$deferred = get_post_meta($order_id, '_has_deferred_contracts', true);
 
+		if(get_post_meta($order_id, '_has_extend', true)){
+			global $wpdb;
 
-		if(!$sent && !$deferred){
+			if(!$wpdb->get_var("select count(id) from $wpdb->prefix{$this->plugin->table_name} where order_id = $order_id")){
+				$this->schedule_contracts($order_id, $order);
+			}
 
-			$this->send_contracts($order_id, $order);
 		}
 
 	}
@@ -126,13 +135,14 @@ class EFWC_Contracts {
 	 * @param $order_id integer
 	 * @param $order WC_Order
 	 */
-	private function send_contracts( $order_id, $order) {
+	public function schedule_contracts( $order_id, $order) {
+		global $wpdb;
 
 		$items     = $order->get_items();
 		$contracts = [];
 		$prices    = [];
-		$covered   = [];
-		$deferred_data = [];
+
+
 //		$leads = [];
 
 		foreach ( $items as $item ) {
@@ -150,91 +160,62 @@ class EFWC_Contracts {
 
 		if ( ! empty( $contracts ) ) {
 
+			$date = $order->get_date_paid();
+
+			if($date === null || $date === false){
+				error_log("order $order_id is not paid");
+				return;
+			}
+
+
+
 			foreach ( $contracts as $item ) {
-				$item_id = $item->get_id();
+				
 				$data    = $item->get_meta( '_extend_data' );
+
 				if ( $data ) {
 
 					$covered_id = $data['covered_product_id'];
-					$covered[]  = $covered_id;
+
 					$delay = $this->get_product_shipping_estimate(wc_get_product($covered_id));
-					$date = $order->get_date_paid();
+
 					$projected_ship_date_obj =  date_add($date, date_interval_create_from_date_string("$delay days"));
 
-					$projected_ship_date = $projected_ship_date_obj->getTimestamp();
+					if(!$projected_ship_date_obj){
+						error_log('failure to create projected ship date for ' . $order_id);
+						return;
+					}
+					$date_scheduled = $projected_ship_date_obj->format('Y-m-d H:i:s');
 
 
-					$contract_data = [
-						'transactionId'    => $order_id,
-						'poNumber'         => $order->get_order_number(),
-						'transactionTotal' => [
-							'currencyCode' => 'USD',
-							'amount'       => $order->get_total() * 100
-						],
-						'customer'         => [
-							'name'            => $order->get_billing_first_name() . ' ' . $order->get_billing_last_name(),
-							'email'           => $order->get_billing_email(),
-							'phone'           => $order->get_billing_phone(),
-							'billingAddress'  => [
-								'address1'     => $order->get_billing_address_1(),
-								'address2'     => $order->get_billing_address_2(),
-								'city'         => $order->get_billing_city(),
-								'countryCode'  => $order->get_billing_country(),
-								'postalCode'   => $order->get_billing_postcode(),
-								'provinceCode' => $order->get_billing_state()
-							],
-							'shippingAddress' => [
-								'address1'     => $order->get_shipping_address_1(),
-								'address2'     => $order->get_shipping_address_2(),
-								'city'         => $order->get_shipping_city(),
-								'countryCode'  => $order->get_shipping_country(),
-								'postalCode'   => $order->get_shipping_postcode(),
-								'provinceCode' => $order->get_shipping_state()
-							],
-						],
-						'product'          => [
-							'referenceId'   => $covered_id,
-							'purchasePrice' => [
-								'currencyCode' => 'USD',
-								'amount'       => $prices[ $covered_id ] * 100
-							]
-						],
-						'currency'         => 'USD',
-						'source'           => [
-							'agentId'      => '',
-							'channel'      => 'web',
-							'integratorId' => 'netsuite',
-							'locationId'   => $this->plugin->store_id,
-							'platform'     => 'woocommerce'
-						],
-						'transactionDate'  => $projected_ship_date,
-						'plan'             => [
-							'purchasePrice' => [
-								'currencyCode' => 'USD',
-								'amount'       => $data['price']
-							],
-							'planId'        => $data['planId']
-						]
+					$date_created = $date->format('Y-m-d H:i:s');
+					$order_number = $order->get_order_number();
+					$product_id = $covered_id;
+					$product_price = $prices[$product_id];
+					$warranty_price = $data['price']/100;
+					$warranty_plan_id = $data['planId'];
 
-					];
+					$warranty_title = isset($data['Warranty'])?$data['Warranty']:'';
+					$warranty_term = isset($data['Warranty Term'])? intval(str_replace(' Months', '', $data['Warranty Term'])):'';
+					if(isset($data['term'])){
+						$warranty_term = $data['term'];
+					}
+					$product_name = $item->get_meta('Covered Product');
 
-
-
-					wp_schedule_single_event($projected_ship_date, strtolower( get_class($this->plugin)). '_send_contract', [$contract_data, $order_id, $item_id, $item]);
-
-					$deferred_data[$item_id] = $projected_ship_date;
+					$wpdb->insert($wpdb->prefix . $this->plugin->table_name, compact('date_created', 'warranty_title', 'warranty_term', 'order_id','date_scheduled','order_number', 'product_id', 'product_price', 'product_name', 'warranty_price', 'warranty_plan_id'));
 
 				}
 
 			}
+			$product_name = '';
 
-			update_post_meta($order_id, '_has_deferred_contracts', $deferred_data);
+
 		}
 	}
 
 	private function get_product_shipping_estimate($product){
 
-		 $max = 14;
+		 $default_max = 21;
 		if($product->get_parent_id()>0){
 			//variation
 			if(get_post_meta($product->get_id(), 'ship_time_min', true)){
@@ -271,11 +252,82 @@ class EFWC_Contracts {
 		}
 
 
+		if(!$max){
+			return $default_max;
+		}
+
 		return $max;
 
 	}
 
+	/**
+	 * @param $order_id
+	 * @param $order
+	 * @param $covered_id
+	 * @param $prices
+	 * @param $projected_ship_date
+	 * @param $data
+	 *
+	 * @return array
+	 */
+	private function get_contract_data(  $order, $covered_id, $product_price, $plan_price, $plan_id, $transaction_date_epoch) {
 
+		$contract_data = [
+			'transactionId'    => $order->get_id(),
+			'poNumber'         => $order->get_order_number(),
+			'transactionTotal' => [
+				'currencyCode' => 'USD',
+				'amount'       => $order->get_total() * 100
+			],
+			'customer'         => [
+				'name'            => $order->get_billing_first_name() . ' ' . $order->get_billing_last_name(),
+				'email'           => $order->get_billing_email(),
+				'phone'           => $order->get_billing_phone(),
+				'billingAddress'  => [
+					'address1'     => $order->get_billing_address_1(),
+					'address2'     => $order->get_billing_address_2(),
+					'city'         => $order->get_billing_city(),
+					'countryCode'  => $order->get_billing_country(),
+					'postalCode'   => $order->get_billing_postcode(),
+					'provinceCode' => $order->get_billing_state()
+				],
+				'shippingAddress' => [
+					'address1'     => $order->get_shipping_address_1(),
+					'address2'     => $order->get_shipping_address_2(),
+					'city'         => $order->get_shipping_city(),
+					'countryCode'  => $order->get_shipping_country(),
+					'postalCode'   => $order->get_shipping_postcode(),
+					'provinceCode' => $order->get_shipping_state()
+				],
+			],
+			'product'          => [
+				'referenceId'   => $covered_id,
+				'purchasePrice' => [
+					'currencyCode' => 'USD',
+					'amount'       => $product_price * 100
+				]
+			],
+			'currency'         => 'USD',
+			'source'           => [
+				'agentId'      => '',
+				'channel'      => 'web',
+				'integratorId' => 'netsuite',
+				'locationId'   => $this->plugin->store_id,
+				'platform'     => 'woocommerce'
+			],
+			'transactionDate'  => $transaction_date_epoch,
+			'plan'             => [
+				'purchasePrice' => [
+					'currencyCode' => 'USD',
+					'amount'       => $plan_price * 100
+				],
+				'planId'        => $plan_id
+			]
+
+		];
+
+		return $contract_data;
+	}
 
 
 }
