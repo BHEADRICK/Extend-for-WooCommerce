@@ -113,13 +113,24 @@ class EFWC_Contracts {
 
 	}
 
+	private function order_has_coverage($order){
+		$items     = $order->get_items();
+		foreach ( $items as $item ) {
+			if ( intval( $item->get_product_id() ) === intval( $this->warranty_product_id ) ) {
+				return true;
+			}
+
+		}
+		return false;
+	}
+
 	public function maybe_send_contracts($order_id, $order){
 
+		error_log("checking order $order_id");
 
-
-		if(get_post_meta($order_id, '_has_extend', true)){
+		if($this->order_has_coverage($order)){
 			global $wpdb;
-
+			error_log('order has coverage');
 			if(!$wpdb->get_var("select count(id) from $wpdb->prefix{$this->plugin->table_name} where order_id = $order_id")){
 				$this->schedule_contracts($order_id, $order);
 			}
@@ -137,7 +148,7 @@ class EFWC_Contracts {
 	 */
 	public function schedule_contracts( $order_id, $order) {
 		global $wpdb;
-
+		error_log("scheduling contract(s) for order $order_id");
 		$items     = $order->get_items();
 		$contracts = [];
 		$prices    = [];
@@ -178,7 +189,7 @@ class EFWC_Contracts {
 					$covered_id = $data['covered_product_id'];
 
 					$delay = $this->get_product_shipping_estimate(wc_get_product($covered_id));
-
+					$date_created = $date->format('Y-m-d H:i:s');
 					$projected_ship_date_obj =  date_add($date, date_interval_create_from_date_string("$delay days"));
 
 					if(!$projected_ship_date_obj){
@@ -188,7 +199,7 @@ class EFWC_Contracts {
 					$date_scheduled = $projected_ship_date_obj->format('Y-m-d H:i:s');
 
 
-					$date_created = $date->format('Y-m-d H:i:s');
+
 					$order_number = $order->get_order_number();
 					$product_id = $covered_id;
 					$product_price = $prices[$product_id];
