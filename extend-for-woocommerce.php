@@ -163,6 +163,14 @@ final class Extend_For_WooCommerce {
 	protected $frontend;
 
 	/**
+	 * Instance of EFWC_Admin
+	 *
+	 * @since0.0.0
+	 * @var EFWC_Admin
+	 */
+	protected $admin;
+
+	/**
 	 * Creates or returns an instance of this class.
 	 *
 	 * @since   0.0.0
@@ -215,6 +223,7 @@ final class Extend_For_WooCommerce {
 		$this->contracts = new EFWC_Contracts( $this );
 		$this->batch = new EFWC_Batch( $this );
 		$this->frontend = new EFWC_Frontend( $this );
+		$this->admin = new EFWC_Admin( $this );
 	} // END OF PLUGIN CLASSES FUNCTION
 
 	/**
@@ -499,6 +508,7 @@ final class Extend_For_WooCommerce {
 			case 'batch':
 			case 'table_name':
 			case 'frontend':
+			case 'admin':
 				return $this->$field;
 			default:
 				throw new Exception( 'Invalid ' . __CLASS__ . ' property: ' . $field );

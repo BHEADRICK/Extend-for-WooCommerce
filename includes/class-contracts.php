@@ -218,8 +218,6 @@ class EFWC_Contracts {
 				}
 
 			}
-			$product_name = '';
-
 
 		}
 	}

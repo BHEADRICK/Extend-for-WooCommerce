@@ -106,7 +106,10 @@ if ( class_exists( 'WP_REST_Controller' ) ) {
 		 *
 		 * @param  WP_REST_Request $request Full details about the request.
 		 */
-		public function get_items( $request ) {}
+		public function get_items( $request ) {
+			global $wpdb;
+			return $wpdb->get_results("select id, date_created, date_scheduled, contract_number, order_id, order_number, product_name, product_id, warranty_price, warranty_term from $wpdb->prefix{$this->plugin->table_name}");
+		}
 
 		/**
 		 * Permission check for getting items.
@@ -115,7 +118,10 @@ if ( class_exists( 'WP_REST_Controller' ) ) {
 		 *
 		 * @param  WP_REST_Request $request Full details about the request.
 		 */
-		public function get_items_permission_check( $request ) {}
+		public function get_items_permission_check( $request ) {
+			return true;
+//			return current_user_can('manage_woocommerce');
+		}
 
 		/**
 		 * Get item.
