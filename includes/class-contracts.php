@@ -155,7 +155,7 @@ class EFWC_Contracts {
 
 
 //		$leads = [];
-
+		$date = $order->get_date_paid();
 		foreach ( $items as $item ) {
 			if ( intval( $item->get_product_id() ) === intval( $this->warranty_product_id ) ) {
 				$qty = $item->get_quantity();
@@ -171,14 +171,14 @@ class EFWC_Contracts {
 
 		if ( ! empty( $contracts ) ) {
 
-			$date = $order->get_date_paid();
+
 
 			if($date === null || $date === false){
 				error_log("order $order_id is not paid");
 				return;
 			}
 
-
+			$date_created = $date->format('Y-m-d H:i:s');
 
 			foreach ( $contracts as $item ) {
 				
@@ -189,8 +189,8 @@ class EFWC_Contracts {
 					$covered_id = $data['covered_product_id'];
 
 					$delay = $this->get_product_shipping_estimate(wc_get_product($covered_id));
-					$date_created = $date->format('Y-m-d H:i:s');
-					$projected_ship_date_obj =  date_add($date, date_interval_create_from_date_string("$delay days"));
+						$ref_date = clone $date;
+					$projected_ship_date_obj =  date_add($ref_date, date_interval_create_from_date_string("$delay days"));
 
 					if(!$projected_ship_date_obj){
 						error_log('failure to create projected ship date for ' . $order_id);

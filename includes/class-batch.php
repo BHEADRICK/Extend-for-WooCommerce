@@ -305,15 +305,22 @@ class EFWC_Batch {
 
 			foreach ( $order_items as $order_item_id => $datestamp ) {
 
-				$date_scheduled = date( 'Y-m-d H:i:s', $datestamp );
-				$this->get_warranty_data( $wc_order, $order_item_id, $warranty_price, $warranty_title, $warranty_term, $warranty_plan_id, $product_id, $product_name );
+				$order_item = $wc_order->get_item($order_item_id);
+				$qty = $order_item->get_quantity();
+
+				for($i = 0; $i<$qty; $i++){
+					$date_scheduled = date( 'Y-m-d H:i:s', $datestamp );
+					$this->get_warranty_data( $wc_order, $order_item_id, $warranty_price, $warranty_title, $warranty_term, $warranty_plan_id, $product_id, $product_name );
 
 
-				$product_price = $this->get_product_data( $wc_order, $product_id );
-				$data          = compact( 'date_created', 'date_scheduled', 'order_id', 'order_number', 'product_id', 'product_price', 'product_name', 'warranty_plan_id', 'warranty_price', 'warranty_term', 'warranty_title' );
+					$product_price = $this->get_product_data( $wc_order, $product_id );
+					$data          = compact( 'date_created', 'date_scheduled', 'order_id', 'order_number', 'product_id', 'product_price', 'product_name', 'warranty_plan_id', 'warranty_price', 'warranty_term', 'warranty_title' );
 
 
-				$wpdb->insert( $wpdb->prefix . $this->plugin->table_name, $data );
+					$wpdb->insert( $wpdb->prefix . $this->plugin->table_name, $data );
+				}
+
+
 			}
 		}
 	}
