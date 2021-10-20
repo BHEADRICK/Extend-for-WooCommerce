@@ -120,7 +120,43 @@ class EFWC_Batch {
 
 		$this->migrate_scheduled_contracts($order_id);
 		$this->migrate_created_contracts($order_id);
+$this->migrate_missed_contracts($order_id);
+	}
 
+	public function migrate_missed_contracts($order_id = null){
+
+		$warranty_product_id = get_option('wc_extend_product_id');
+
+		if(!$warranty_product_id){
+			error_log('warranty product id not set');
+			return;
+		}
+
+		if(empty($order_id)){
+
+			global $wpdb;
+
+			$sql = "select p.ID from $wpdb->posts p
+join {$wpdb->prefix}woocommerce_order_items oi on oi.order_id = p.ID
+join {$wpdb->prefix}woocommerce_order_itemmeta oim on oi.order_item_id = oim.order_item_id and oim.meta_key = '_product_id' and oim.meta_value = $warranty_product_id
+left join {$wpdb->prefix}{$this->plugin->table_name} c on c.order_id = p.ID
+where p.post_status not in ('wc-refunded', 'wc-cancelled', 'wc-failed', 'wc-on-hold')
+and c.id is null
+";
+
+			$order_ids = $wpdb->get_col($sql);
+
+
+			foreach($order_ids as $order_id){
+				$wc_order = wc_get_order($order_id);
+				$this->plugin->contracts->schedule_contracts($order_id, $wc_order);
+			}
+
+
+		}else{
+			error_log('order id:');
+			error_log($order_id);
+		}
 	}
 	/**
 	 * Create a method stub for our first CLI command.
@@ -277,6 +313,9 @@ class EFWC_Batch {
 
 		global $wpdb;
 
+		if($wpdb->get_var("select count(id) from $wpdb->prefix{$this->plugin->table_name} where order_id = $order_id")){
+			return;
+		}
 
 		$wc_order    = wc_get_order( $order_id );
 
@@ -340,7 +379,9 @@ class EFWC_Batch {
 
 		global $wpdb;
 
-
+		if($wpdb->get_var("select count(id) from $wpdb->prefix{$this->plugin->table_name} where order_id = $order_id")){
+			return;
+		}
 		$wc_order     = wc_get_order( $order_id );
 
 		$order_number = $wc_order->get_order_number();

@@ -93,8 +93,12 @@ class EFWC_Contracts {
 		}
 		if(!$order->get_date_paid()){
 			error_log("order not paid: $order_id");
+			$trans_date = $order->get_date_modified()->getTimestamp();
+		}else{
+
+			$trans_date = $order->get_date_paid()->getTimestamp();
 		}
-		$trans_date = $order->get_date_paid()->getTimestamp();
+
 		$contract_data = $this->get_contract_data($order, $covered_id, $product_price, $plan_price, $plan_id, $trans_date );
 
 
@@ -155,10 +159,14 @@ class EFWC_Contracts {
 		$items     = $order->get_items();
 		$contracts = [];
 		$prices    = [];
-
+		if($wpdb->get_var("select count(id) from $wpdb->prefix{$this->plugin->table_name} where order_id = $order_id")){
+			return;
+		}
 
 //		$leads = [];
 		$date = $order->get_date_paid();
+
+
 
 		$method = $order->get_payment_method();
 
@@ -168,6 +176,8 @@ class EFWC_Contracts {
 				$date = $order->get_date_modified();
 			}
 
+		}elseif(!$date){
+			$date = $order->get_date_modified();
 		}
 		foreach ( $items as $item ) {
 			if ( intval( $item->get_product_id() ) === intval( $this->warranty_product_id ) ) {
