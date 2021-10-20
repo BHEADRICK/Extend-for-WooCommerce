@@ -318,6 +318,8 @@ final class Extend_For_WooCommerce {
 		}
 
 		$this->add_tables();
+
+		wp_schedule_event(strtotime('04:00:00'), 'daily', get_class($this) . '_send_contracts');
 		// Make sure any rewrite functionality has been loaded.
 		flush_rewrite_rules();
 	}

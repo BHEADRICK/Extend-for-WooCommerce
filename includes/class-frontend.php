@@ -107,8 +107,25 @@ if ( class_exists( 'WP_REST_Controller' ) ) {
 		 * @param  WP_REST_Request $request Full details about the request.
 		 */
 		public function get_items( $request ) {
+
+			$limit = $request->get_param('limit');
+			$offset = $request->get_param('offset');
 			global $wpdb;
-			return $wpdb->get_results("select id, date_created, date_scheduled, contract_number, order_id, order_number, product_name, product_id, warranty_price, warranty_term from $wpdb->prefix{$this->plugin->table_name}");
+			$sql = "select id, date_created, date_scheduled, contract_number, order_id, order_number, product_name, product_id, warranty_price, warranty_term from $wpdb->prefix{$this->plugin->table_name} limit  $limit offset $offset";
+
+			$items = $wpdb->get_results($sql);
+
+			$totals = $wpdb->get_row("select count(id) count, sum(warranty_price) revenue from $wpdb->prefix{$this->plugin->table_name}");
+
+			$month = $wpdb->get_row( "select count(id) count, sum(warranty_price) revenue from $wpdb->prefix{$this->plugin->table_name} where month(`date_created`) = month(now())");
+
+			$products = $wpdb->get_results("
+			select product_name, product_id, count(id) count from $wpdb->prefix{$this->plugin->table_name} 
+group by product_name, product_id
+order by count(id) desc
+limit 10");
+
+			return compact('items', 'totals', 'month', 'products');
 		}
 
 		/**

@@ -7,9 +7,18 @@
 .bootstrap-wrapper .col-md-4 .content{
     background: #fff;
     border: 1px solid #ccc;
-    height: 200px;
+    height: 225px;
     font-size: 50px;
 
+}
+.bootstrap-wrapper .col-md-4 h3{
+    height: 65px;
+}
+.bootstrap-wrapper .col-md-4 .content td{
+    max-width: 390px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 .bootstrap-wrapper .col-md-4 .content span{
     display:inline-block;
