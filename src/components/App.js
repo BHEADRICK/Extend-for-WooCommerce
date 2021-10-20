@@ -85,15 +85,15 @@ export default class App extends React.Component {
                     <div className="col-md-4">
                         <h2>Popular Products</h2>
                         <div className="content">
-                            <table>
-                            {
+                            {/*<table>*/}
+                            {/*{*/}
 
-                                Object.keys(prods).map(key =>
-                                    <tr>
-                                        <td>{key}</td><td>{prods[key]}</td></tr>
-                                )
-                            }}
-                            </table>
+                                {/*Object.keys(prods).map(key =>*/}
+                                    {/*<tr>*/}
+                                        {/*<td>{key}</td><td>{prods[key]}</td></tr>*/}
+                                {/*)*/}
+                            {/*}}*/}
+                            {/*</table>*/}
                         </div>
                     </div>
                     <div className="col-md-4">
