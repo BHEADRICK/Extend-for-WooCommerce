@@ -111,7 +111,7 @@ if ( class_exists( 'WP_REST_Controller' ) ) {
 			$limit = $request->get_param('limit');
 			$offset = $request->get_param('offset');
 			global $wpdb;
-			$sql = "select id, date_created, date_scheduled, contract_number, order_id, order_number, product_name, product_id, warranty_price, warranty_term from $wpdb->prefix{$this->plugin->table_name} limit  $limit offset $offset";
+			$sql = "select id, date_created, date_scheduled, contract_number, order_id, order_number, product_name, product_id, warranty_price, warranty_term from $wpdb->prefix{$this->plugin->table_name} order by date_created desc limit  $limit offset $offset ";
 
 			$items = $wpdb->get_results($sql);
 

@@ -5,10 +5,11 @@
     overflow: hidden;
 }
 .bootstrap-wrapper .col-md-4 .content{
-    background: #fff;
+    background: #eee;
     border: 1px solid #ccc;
     height: 225px;
     font-size: 50px;
+    margin-right:20px;
 
 }
 .bootstrap-wrapper .col-md-4 h3{

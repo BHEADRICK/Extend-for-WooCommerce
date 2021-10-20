@@ -223,6 +223,14 @@ var App = /*#__PURE__*/function (_React$Component) {
               }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_4__.jsx)("th", {
                 className: "manage-column",
                 scope: "col",
+                children: "Date"
+              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_4__.jsx)("th", {
+                className: "manage-column",
+                scope: "col",
+                children: "Status"
+              }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_4__.jsx)("th", {
+                className: "manage-column",
+                scope: "col",
                 children: "Product"
               }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_4__.jsx)("th", {
                 className: "manage-column",
@@ -243,6 +251,10 @@ var App = /*#__PURE__*/function (_React$Component) {
                     href: "/wp-admin/post.php?post=" + item.order_id + "&action=edit",
                     children: item.order_number
                   })
+                }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_4__.jsx)("td", {
+                  children: item.date_created
+                }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_4__.jsx)("td", {
+                  children: item.contract_number ? 'sent' : 'scheduled'
                 }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_4__.jsx)("td", {
                   children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_4__.jsx)("a", {
                     target: "_blank",
@@ -327,7 +339,7 @@ __webpack_require__.r(__webpack_exports__);
 
 var ___CSS_LOADER_EXPORT___ = _node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_0___default()(function(i){return i[1]});
 // Module
-___CSS_LOADER_EXPORT___.push([module.id, ".bootstrap-wrapper .col-md-4{\n    float:left;\n    height:300px;\n    text-align: center;\n    overflow: hidden;\n}\n.bootstrap-wrapper .col-md-4 .content{\n    background: #fff;\n    border: 1px solid #ccc;\n    height: 225px;\n    font-size: 50px;\n\n}\n.bootstrap-wrapper .col-md-4 h3{\n    height: 65px;\n}\n.bootstrap-wrapper .col-md-4 .content td{\n    max-width: 390px;\n    overflow: hidden;\n    text-overflow: ellipsis;\n    white-space: nowrap;\n}\n.bootstrap-wrapper .col-md-4 .content span{\n    display:inline-block;\n    margin-top:75px;\n}\n.bootstrap-wrapper .col-md-4 .content table{\n    font-size:10px;\n}", ""]);
+___CSS_LOADER_EXPORT___.push([module.id, ".bootstrap-wrapper .col-md-4{\n    float:left;\n    height:300px;\n    text-align: center;\n    overflow: hidden;\n}\n.bootstrap-wrapper .col-md-4 .content{\n    background: #eee;\n    border: 1px solid #ccc;\n    height: 225px;\n    font-size: 50px;\n    margin-right:20px;\n\n}\n.bootstrap-wrapper .col-md-4 h3{\n    height: 65px;\n}\n.bootstrap-wrapper .col-md-4 .content td{\n    max-width: 390px;\n    overflow: hidden;\n    text-overflow: ellipsis;\n    white-space: nowrap;\n}\n.bootstrap-wrapper .col-md-4 .content span{\n    display:inline-block;\n    margin-top:75px;\n}\n.bootstrap-wrapper .col-md-4 .content table{\n    font-size:10px;\n}", ""]);
 // Exports
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (___CSS_LOADER_EXPORT___);
 

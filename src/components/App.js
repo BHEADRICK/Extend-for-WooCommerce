@@ -126,6 +126,8 @@ export default class App extends React.Component {
                     <thead>
                     <tr>
                         <th className="manage-column" scope="col">Order #</th>
+                        <th className="manage-column" scope="col">Date</th>
+                        <th className="manage-column" scope="col">Status</th>
                         <th className="manage-column" scope="col">Product</th>
                         <th className="manage-column" scope="col">Warranty Term</th>
                         <th className="manage-column" scope="col">Warranty Price</th>
@@ -142,6 +144,13 @@ export default class App extends React.Component {
                                {item.order_number}
                                </a>
                            </td>
+                            <td>
+                                {item.date_created}
+
+                            </td>
+                            <td>
+                                {item.contract_number?'sent':'scheduled'}
+                            </td>
                             <td>
                                 <a target="_blank" href={"/wp-admin/post.php?post=" + item.product_id + "&action=edit"}>
                                 {item.product_name}
