@@ -43,6 +43,8 @@ class EFWC_Contracts {
 	 */
 	public function hooks() {
 		add_action('woocommerce_order_status_processing', [$this, 'maybe_send_contracts'], 10, 2);
+		add_action('woocommerce_order_status_awaiting-shipment', [$this, 'maybe_send_contracts'], 10, 2);
+		add_action('woocommerce_order_status_completed', [$this, 'maybe_send_contracts'], 10, 2);
 
 		add_action(strtolower( get_class($this->plugin)). '_send_contracts', [$this, 'get_contracts']);
 	}
@@ -126,11 +128,12 @@ class EFWC_Contracts {
 
 	public function maybe_send_contracts($order_id, $order){
 
+
+
 		error_log("checking order $order_id");
 
 		if($this->order_has_coverage($order)){
 			global $wpdb;
-			error_log('order has coverage');
 			if(!$wpdb->get_var("select count(id) from $wpdb->prefix{$this->plugin->table_name} where order_id = $order_id")){
 				$this->schedule_contracts($order_id, $order);
 			}
@@ -156,6 +159,16 @@ class EFWC_Contracts {
 
 //		$leads = [];
 		$date = $order->get_date_paid();
+
+		$method = $order->get_payment_method();
+
+		if(!$date && $method === 'bread_finance'){
+			$bread_status = get_post_meta($order_id, 'bread_tx_status', true);
+			if(in_array($bread_status, ['authorized', 'settled'])){
+				$date = $order->get_date_modified();
+			}
+
+		}
 		foreach ( $items as $item ) {
 			if ( intval( $item->get_product_id() ) === intval( $this->warranty_product_id ) ) {
 				$qty = $item->get_quantity();
