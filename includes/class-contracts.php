@@ -305,7 +305,7 @@ class EFWC_Contracts {
 	private function get_contract_data(  $order, $covered_id, $product_price, $plan_price, $plan_id, $transaction_date_epoch) {
 
 		$contract_data = [
-			'transactionId'    => $order->get_id(),
+			'transactionId'    => $order->get_order_number(),
 			'poNumber'         => $order->get_order_number(),
 			'transactionTotal' => [
 				'currencyCode' => 'USD',

@@ -64,6 +64,11 @@ handleOrderNumber =(e)=>{
 
         }
 }
+     daysTill(datestr) {
+        let date = new Date(datestr)
+        const today = new Date();
+        return Math.ceil((date.getTime() - today.getTime())/ (1000 * 60 * 60 * 24));
+    }
 handleStatus=(e)=>{
  this.setState({
      status: e.target.value
@@ -189,6 +194,7 @@ handleStatus=(e)=>{
                             </td>
                             <td>
                                 {item.contract_number?(item.contract_number.length === 36?'sent':item.contract_number):'scheduled'}
+                                {!item.contract_number?'\n'+this.daysTill(item.date_scheduled) + ' Days':''}
                             </td>
                             <td>
                                 <a target="_blank" href={"/wp-admin/post.php?post=" + item.product_id + "&action=edit"}>
