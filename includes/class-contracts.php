@@ -309,7 +309,7 @@ class EFWC_Contracts {
 			'poNumber'         => $order->get_order_number(),
 			'transactionTotal' => [
 				'currencyCode' => 'USD',
-				'amount'       => $order->get_total() * 100
+				'amount'       => intval($order->get_total() * 100)
 			],
 			'customer'         => [
 				'name'            => $order->get_billing_first_name() . ' ' . $order->get_billing_last_name(),
@@ -336,7 +336,7 @@ class EFWC_Contracts {
 				'referenceId'   => $covered_id,
 				'purchasePrice' => [
 					'currencyCode' => 'USD',
-					'amount'       => $product_price * 100
+					'amount'       => intval($product_price * 100)
 				]
 			],
 			'currency'         => 'USD',
@@ -351,7 +351,7 @@ class EFWC_Contracts {
 			'plan'             => [
 				'purchasePrice' => [
 					'currencyCode' => 'USD',
-					'amount'       => $plan_price * 100
+					'amount'       => intval($plan_price * 100)
 				],
 				'planId'        => $plan_id
 			]
