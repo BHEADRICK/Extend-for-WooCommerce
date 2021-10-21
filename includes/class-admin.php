@@ -67,8 +67,8 @@ class EFWC_Admin {
 			'manage_options',
 			'extend',
 			[$this, 'admin_page'],
-			'dashicons-schedule',
-			3
+
+			12
 		);
 	}
 

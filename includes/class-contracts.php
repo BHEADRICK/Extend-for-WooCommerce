@@ -53,7 +53,7 @@ class EFWC_Contracts {
 
 		global $wpdb;
 
-		$contracts = $wpdb->get_results("select id, order_id, product_id, warranty_price, product_price, warranty_plan_id from $wpdb->prefix{$this->plugin->table_name} where date_scheduled < curdate() and contract_number = ''");
+		$contracts = $wpdb->get_results("select id, order_id, product_id, warranty_price, product_price, warranty_plan_id from $wpdb->prefix{$this->plugin->table_name} where date_scheduled < curdate() and (contract_number = '' or contract_number is null)");
 
 
 		foreach($contracts as $contract){
@@ -100,7 +100,7 @@ class EFWC_Contracts {
 		}
 
 		$contract_data = $this->get_contract_data($order, $covered_id, $product_price, $plan_price, $plan_id, $trans_date );
-
+//		error_log(print_r($contract_data, true));
 
 		$res = $this->plugin->remote_request( '/contracts', 'POST', $contract_data );
 

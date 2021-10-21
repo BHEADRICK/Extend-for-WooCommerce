@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect} from "react";
 
 import "./App.css";
 // import 'bootstrap-grid-only-css/dist/css/bootstrap-grid.min.css';
@@ -17,16 +17,21 @@ export default class App extends React.Component {
         operation: null,
         DataisLoaded: false,
         offset: 0,
-        perPage: 20
+        perPage: 20,
+        order_num : ''
+
     };
 
-    // handleClick = buttonName => {
+
+
+
+// handleClick = buttonName => {
     //     this.setState(calculate(this.state, buttonName));
     // };
 
-    loadContractsFromServer(){
+    loadContractsFromServer=()=>{
         fetch(
-            root + path + '?limit=' + this.state.perPage +  '&offset=' + this.state.offset, {
+            root + path + '?limit=' + this.state.perPage +  '&offset=' + this.state.offset + '&order_num='+ this.state.order_num + '&status=' + this.state.status, {
                 headers: {'X-WP-Nonce': nonce}
             })
             .then((res) => res.json())
@@ -35,7 +40,7 @@ export default class App extends React.Component {
                 this.setState({
                     items: json.items,
                     DataisLoaded: true,
-                    pageCount: Math.ceil(json.totals.count /this.state.perPage),
+                    pageCount: Math.ceil(json.filtered_count /this.state.perPage),
                     totalRevenue: json.totals.revenue,
                     totalCount: json.totals.count,
                     monthRevenue: json.month.revenue,
@@ -44,6 +49,27 @@ export default class App extends React.Component {
                 });
             })
 
+}
+handleOrderNumber =(e)=>{
+
+        let val = e.target.value;
+        console.log(val)
+        if(val.length>2 || val.length === 0){
+            this.setState({
+                offset: 0,
+                order_num:val
+            }, ()=>{
+                this.loadContractsFromServer();
+            });
+
+        }
+}
+handleStatus=(e)=>{
+ this.setState({
+     status: e.target.value
+ }, ()=>{
+     this.loadContractsFromServer();
+ })
 }
 
     componentDidMount(){
@@ -104,13 +130,15 @@ export default class App extends React.Component {
                         <h2>Popular Products</h2>
                         <div className="content">
                             <table>
+                                <tbody>
                             {
 
                                 Object.keys(products).map(key =>
-                                    <tr>
+                                    <tr key={key}>
                                         <td>{products[key].product_name}</td><td>{products[key].count}</td></tr>
                                 )
                             }
+                                </tbody>
                             </table>
                         </div>
                     </div>
@@ -122,12 +150,23 @@ export default class App extends React.Component {
                     </div>
                 </div>
 
-                <table className="table" cellspacing="0">
+                <table className="table" cellSpacing="0">
                     <thead>
                     <tr>
-                        <th className="manage-column" scope="col">Order #</th>
+                        <th className="manage-column" scope="col">
+                            <input type="text" className="form-control" onKeyUp={this.handleOrderNumber}
+                                   aria-describedby="order Number" placeholder="Order#"/>
+                        </th>
                         <th className="manage-column" scope="col">Date</th>
-                        <th className="manage-column" scope="col">Status</th>
+                        <th className="manage-column" scope="col">
+                            <select name="status" onChange={this.handleStatus} >
+                                <option value="">Status</option>
+                                <option value="sent">Sent</option>
+                                <option value="scheduled">Scheduled</option>
+                                <option value="cancelled">Cancelled/Refunded</option>
+                            </select>
+
+                        </th>
                         <th className="manage-column" scope="col">Product</th>
                         <th className="manage-column" scope="col">Warranty Term</th>
                         <th className="manage-column" scope="col">Warranty Price</th>
@@ -149,7 +188,7 @@ export default class App extends React.Component {
 
                             </td>
                             <td>
-                                {item.contract_number?'sent':'scheduled'}
+                                {item.contract_number?(item.contract_number.length === 36?'sent':item.contract_number):'scheduled'}
                             </td>
                             <td>
                                 <a target="_blank" href={"/wp-admin/post.php?post=" + item.product_id + "&action=edit"}>

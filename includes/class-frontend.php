@@ -110,10 +110,35 @@ if ( class_exists( 'WP_REST_Controller' ) ) {
 
 			$limit = $request->get_param('limit');
 			$offset = $request->get_param('offset');
+			$order_num = $request->get_param('order_num');
+			$status = $request->get_param('status');
+			$where = "";
+
+			if(!empty($order_num)){
+				$where .= " and order_number like '%$order_num%'";
+			}
+
+			if(!empty($status)){
+				switch ($status){
+					case 'sent':
+							$where.= " and length(contract_number) = 36";
+						break;
+
+					case 'scheduled':
+							$where .= " and (contract_number is null or contract_number = '')";
+						break;
+
+					case 'cancelled':
+						$where .= " and length(contract_number) between 1 and 35";
+						break;
+				}
+			}
 			global $wpdb;
-			$sql = "select id, date_created, date_scheduled, contract_number, order_id, order_number, product_name, product_id, warranty_price, warranty_term from $wpdb->prefix{$this->plugin->table_name} order by date_created desc limit  $limit offset $offset ";
+			$sql = "select id, date_created, date_scheduled, contract_number, order_id, order_number, product_name, product_id, warranty_price, warranty_term from $wpdb->prefix{$this->plugin->table_name} where 1 $where order by date_created desc limit  $limit offset $offset ";
 
 			$items = $wpdb->get_results($sql);
+
+			$filtered_count = $wpdb->get_var("select count(id) from $wpdb->prefix{$this->plugin->table_name} where 1 $where");
 
 			$totals = $wpdb->get_row("select count(id) count, sum(warranty_price) revenue from $wpdb->prefix{$this->plugin->table_name}");
 
@@ -125,7 +150,7 @@ group by product_name, product_id
 order by count(id) desc
 limit 10");
 
-			return compact('items', 'totals', 'month', 'products');
+			return compact('items', 'totals', 'month', 'products', 'filtered_count');
 		}
 
 		/**
